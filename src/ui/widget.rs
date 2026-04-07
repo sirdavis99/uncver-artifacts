@@ -139,11 +139,11 @@ impl SearchWidget {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let p = self.state.animation_progress.progress; // 0.0 (home state) → 1.0 (searching state)
+        let p = self.state.animation_progress.progress; // 0.0 (circle) → 1.0 (pill)
         
         // ── Dimensions ───────────────────────────────────────────
-        // The user wants it to ALWAYS be a pill, so we use a fixed width.
-        let pill_w = EXPANDED_WIDTH; 
+        // Widens from 48px circle to 380px pill
+        let pill_w = COLLAPSED_SIZE + (EXPANDED_WIDTH - COLLAPSED_SIZE) * p;
         let pill_h = EXPANDED_HEIGHT;
         let radius = 24.0; // Stadium ends for a 48px height pill
 
@@ -171,8 +171,9 @@ impl SearchWidget {
         });
 
         // ── Content ──────────────────────────────────────────────
-        // The content group (Icon + Input + Clear) should be centered as a whole.
-        // Within this group, things are left-aligned.
+        // Alignment: Left-aligned with minor padding to match circular cap.
+        // 4px padding + 40px button = 44px total. In a 48px pill, this leaves 4px on the other side.
+        // This is perfectly centered for the 48x48 circle case.
         
         let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
         
@@ -180,8 +181,7 @@ impl SearchWidget {
             icon_btn.into(),
         ];
 
-        // Only show input and space if we are not fully collapsed (but even if p > 0, it fades in)
-        if p > 0.05 {
+        if p > 0.1 {
             let input_field = text_input(
                 "Search artifacts...", 
                 &self.state.input_text
@@ -196,7 +196,7 @@ impl SearchWidget {
                 }
             })
             .padding(0)
-            .size(22)
+            .size(20) // Slightly smaller for better fit
             .font(Font::DEFAULT)
             .line_height(Pixels(30.0))
             .width(Length::Fixed(240.0))
@@ -205,11 +205,11 @@ impl SearchWidget {
                 border: iced::Border { radius: 0.0.into(), width: 0.0, color: Color::TRANSPARENT },
                 icon: Color::from_rgba(0.0, 0.0, 0.0, input_alpha),
                 placeholder: Color::from_rgba(0.55, 0.55, 0.55, input_alpha),
-                value: Color::from_rgba(0.3, 0.3, 0.3, input_alpha),
+                value: Color::from_rgba(0.25, 0.25, 0.25, input_alpha),
                 selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
             });
 
-            items.push(Space::new().width(10.0).into());
+            items.push(Space::new().width(8.0).into());
             items.push(input_field.into());
             
             if !self.state.input_text.is_empty() {
@@ -229,20 +229,19 @@ impl SearchWidget {
             }
         }
 
-        // Wrap the row in a container that fulfills the "CENTERED" requirement for the group.
-        let content_container = container(
+        // Inner layout: Always Left-aligned (Start) with 4px padding.
+        // Because of the 48px circle and 40px icon, 4px padding naturally centers the icon at p=0.
+        // As width expands to 380px, it stays left-aligned.
+        let inner = container(
             row(items)
                 .spacing(0)
                 .align_y(Alignment::Center)
         )
         .width(Length::Fill)
-        .height(Length::Fill);
-
-        // If collapsed (p=0), center the content so the icon is in the middle of the pill.
-        // If expanded (p=1), the items row will naturally be centered as a whole if we use center_x.
-        let inner = content_container
-            .center_x(Length::Fill)
-            .center_y(Length::Fill);
+        .height(Length::Fill)
+        .padding(4.0)
+        .align_y(Alignment::Center)
+        .align_x(Alignment::Start);
 
         // ── Main Pill ────────────────────────────────────────────
         let pill = container(inner)
@@ -259,7 +258,7 @@ impl SearchWidget {
                 ..Default::default()
             });
 
-        // Outer container ensures the pill itself is centered in the window and the outer background is transparent.
+        // Outer container ensures the pill is centered in the window
         container(pill)
             .width(Length::Fill)
             .height(Length::Fill)
