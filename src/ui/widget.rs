@@ -49,7 +49,9 @@ impl SearchWidget {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Hover(_hovered) => {}
+            Message::Hover(hovered) => {
+                self.state.is_hovered = hovered;
+            }
             Message::Click => {
                 // Clicking the dormant input area expands the pill
                 if self.state.animation_progress.target == 0.0 {
@@ -162,8 +164,8 @@ impl SearchWidget {
         let svg_handle = svg::Handle::from_memory(SEARCH_SVG.as_bytes().to_vec());
         let icon_btn = button(
             container(svg(svg_handle).width(24).height(24))
-                .width(Length::Fixed(32.0))
-                .height(Length::Fixed(32.0))
+                .width(Length::Fixed(28.0))
+                .height(Length::Fixed(28.0))
                 .center_x(Length::Fill)
                 .center_y(Length::Fill)
         )
@@ -210,7 +212,7 @@ impl SearchWidget {
             });
 
             // Minimal spacing after icon
-            items.push(Space::new().width(2.0).into());
+            items.push(Space::new().width(1.0).into());
             items.push(input_field.into());
             
             if !self.state.input_text.is_empty() {
@@ -232,6 +234,9 @@ impl SearchWidget {
             items.push(Space::new().width(8.0).into());
         }
 
+        // 8px when collapsed (centers 28px icon in 48px circle), 0px when expanded (flush left)
+        let left_pad = 8.0 * (1.0 - p);
+        
         let inner = container(
             row(items)
                 .spacing(0)
@@ -240,7 +245,7 @@ impl SearchWidget {
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(iced::Padding {
-            left: 8.0, 
+            left: left_pad, 
             top: 4.0, 
             right: 8.0, 
             bottom: 4.0,
