@@ -1,4 +1,4 @@
-use iced::{Element, Subscription};
+use iced::Subscription;
 use std::sync::Arc;
 
 pub const WINDOW_W: f32 = 480.0;
@@ -27,6 +27,11 @@ pub enum Message {
     SelectCreateFolder,
     FolderSelected(Option<std::path::PathBuf>),
     SubmitCreateArtifact,
+    OpenViewModal(String),
+    OpenEditModal(String),
+    SubmitEditArtifact,
+    SubmitUpdateArtifact,
+    SubmitDeleteArtifact,
     ArtifactCreated(String),
     ArtifactUpdated(std::path::PathBuf),
     OpenArtifact(String),

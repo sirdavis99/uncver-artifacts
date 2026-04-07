@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use std::fs;
-use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct PersistentState {

@@ -31,6 +31,8 @@ pub struct State {
     pub artifact_statuses: HashMap<String, ArtifactStatus>,
     pub is_loading: bool,
     pub is_hovered: bool,
+    pub selected_artifact: Option<String>,
+    pub is_viewing: bool,
 }
 
 impl Default for State {
@@ -51,8 +53,10 @@ impl Default for State {
             recommendations_timer: 0.0,
             artifacts: Vec::new(),
             artifact_statuses: HashMap::new(),
-            is_loading: false,
+            is_loading: true, // Trigger initial load on startup
             is_hovered: false,
+            selected_artifact: None,
+            is_viewing: false,
         }
     }
 }
@@ -74,5 +78,7 @@ impl State {
         self.create_form_title.clear();
         self.create_form_description.clear();
         self.create_form_folder = None;
+        self.selected_artifact = None;
+        self.is_viewing = false;
     }
 }

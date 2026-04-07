@@ -1,5 +1,5 @@
 use iced::widget::{column, container, row, text, Space, Column, stack};
-use iced::{Alignment, Color, Element, Length, Pixels};
+use iced::{Alignment, Color, Element, Length, Pixels, Font};
 use crate::ui::components;
 use crate::ui::state::WidgetMode;
 use crate::ui::widget::{SearchWidget, Message};
@@ -30,6 +30,7 @@ impl SearchWidget {
             row![
                 text(title)
                     .size(10)
+                    .font(Font::default()) // Ensuring system font
                     .color(Color::from_rgba(0.5, 0.5, 0.5, alpha)),
                 Space::new().width(Length::Fill),
                 components::plus_icon_button(alpha),
@@ -47,6 +48,7 @@ impl SearchWidget {
                 container(
                     text("No artifacts found")
                         .size(13)
+                        .font(Font::default()) // Ensuring system font
                         .color(Color::from_rgba(0.5, 0.5, 0.5, alpha))
                 )
                 .width(Length::Fill)
@@ -89,11 +91,14 @@ impl SearchWidget {
             .padding(24);
 
         if self.state.show_create_modal {
-            let modal = components::create_artifact_modal(
+            let is_editing = self.state.selected_artifact.is_some();
+            let modal = components::artifact_modal(
                 &self.state.create_form_title,
                 &self.state.create_form_description,
                 self.state.create_form_folder.as_deref(),
                 alpha,
+                is_editing,
+                self.state.is_viewing,
             );
 
             let overlay = container(modal)

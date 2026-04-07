@@ -1,6 +1,5 @@
 use iced::Task;
 use tracing::info;
-use rfd::FileDialog;
 use crate::ui::state::{ArtifactStatus, WidgetMode};
 use crate::ui::widget::{SearchWidget, Message};
 use crate::artifacts::ArtifactConfig;
@@ -100,6 +99,77 @@ impl SearchWidget {
                         }
                     }
                 )
+            }
+            Message::OpenViewModal(name) => {
+                if let Some(artifact) = self.state.artifacts.iter().find(|a| a.name == name) {
+                    self.state.selected_artifact = Some(name.clone());
+                    self.state.create_form_title = artifact.name.clone();
+                    self.state.create_form_description = artifact.description.clone().unwrap_or_default();
+                    self.state.create_form_folder = artifact.local_path.as_ref().map(|p| std::path::PathBuf::from(p));
+                    self.state.is_viewing = true;
+                    self.state.show_create_modal = true;
+                }
+                Task::none()
+            }
+            Message::OpenEditModal(name) => {
+                if let Some(artifact) = self.state.artifacts.iter().find(|a| a.name == name) {
+                    self.state.selected_artifact = Some(name.clone());
+                    self.state.create_form_title = artifact.name.clone();
+                    self.state.create_form_description = artifact.description.clone().unwrap_or_default();
+                    self.state.create_form_folder = artifact.local_path.as_ref().map(|p| std::path::PathBuf::from(p));
+                    self.state.is_viewing = false;
+                    self.state.show_create_modal = true;
+                }
+                Task::none()
+            }
+            Message::SubmitEditArtifact => {
+                self.state.is_viewing = false;
+                Task::none()
+            }
+            Message::SubmitUpdateArtifact => {
+                if let Some(old_name) = self.state.selected_artifact.clone() {
+                    let title = self.state.create_form_title.clone();
+                    let desc = self.state.create_form_description.clone();
+                    let folder = self.state.create_form_folder.clone();
+                    let manager = self.artifacts.clone();
+                    
+                    self.state.show_create_modal = false;
+                    self.state.selected_artifact = None;
+                    self.state.reset_create_form();
+                    
+                    Task::perform(
+                        async move {
+                            let config = ArtifactConfig {
+                                name: title.clone(),
+                                description: Some(desc),
+                                url: None,
+                                local_path: folder.map(|p| p.to_string_lossy().to_string()),
+                                container_image: Some("ghcr.io/podman/hello:latest".to_string()),
+                            };
+                            manager.update_artifact(&old_name, &config).is_ok()
+                        },
+                        |_| Message::RefreshArtifacts
+                    )
+                } else {
+                    Task::none()
+                }
+            }
+            Message::SubmitDeleteArtifact => {
+                if let Some(name) = self.state.selected_artifact.clone() {
+                    let manager = self.artifacts.clone();
+                    self.state.show_create_modal = false;
+                    self.state.selected_artifact = None;
+                    self.state.reset_create_form();
+                    
+                    Task::perform(
+                        async move {
+                            manager.delete_artifact(&name).is_ok()
+                        },
+                        |_| Message::RefreshArtifacts
+                    )
+                } else {
+                    Task::none()
+                }
             }
             Message::ArtifactCreated(name) => {
                 info!("Artifact {} created!", name);

@@ -74,4 +74,23 @@ impl ArtifactManager {
         }
         Ok(artifacts)
     }
+
+    pub fn delete_artifact(&self, name: &str) -> Result<()> {
+        let folder_name = name.to_lowercase().replace(' ', "-");
+        let mut artifact_path = self.base_dir.clone();
+        artifact_path.push(&folder_name);
+        
+        if artifact_path.exists() {
+            fs::remove_dir_all(artifact_path).map_err(|e| anyhow::anyhow!(e))?;
+        }
+        Ok(())
+    }
+
+    pub fn update_artifact(&self, old_name: &str, config: &ArtifactConfig) -> Result<()> {
+        if old_name != config.name {
+            self.delete_artifact(old_name)?;
+        }
+        self.create_artifact(config)?;
+        Ok(())
+    }
 }

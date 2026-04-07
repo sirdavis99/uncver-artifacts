@@ -123,7 +123,7 @@ pub fn search_bar<'a>(
                 color: Color::TRANSPARENT,
             },
             shadow: iced::Shadow {
-                color: Color::from_rgba(0.2, 0.8, 0.2, 0.3 * alpha),
+                color: Color::from_rgba(0.0, 0.0, 0.0, 0.15 * alpha), // Proper neutral shadow
                 offset: iced::Vector::new(0.0, 4.0),
                 blur_radius: 12.0,
             },

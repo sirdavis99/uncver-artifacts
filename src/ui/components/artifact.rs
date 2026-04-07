@@ -1,5 +1,5 @@
-use iced::widget::{button, column, container, row, svg, text, Column, Row, Space};
-use iced::{Alignment, Color, Element, Length, Pixels, Padding, Background, Border, Vector};
+use iced::widget::{button, column, container, svg, text, Row, Space};
+use iced::{Alignment, Color, Element, Length, Pixels, Padding, Background, Border, Vector, Font, font::Weight};
 use crate::ui::state::ArtifactStatus;
 use crate::ui::widget::Message;
 use super::icons::PLUS_SVG;
@@ -45,23 +45,26 @@ pub fn artifact_item<'a>(
 ) -> Element<'a, Message> {
     let mut row_children = Vec::new();
 
-    // 1. Left Section: Title and Description (fills available space)
+    // 1. Info Selection (Title and Description)
     row_children.push(
         column![
             text(title.clone())
                 .size(13)
+                .font(Font { weight: Weight::Bold, ..Font::default() })
                 .color(Color::from_rgba(0.1, 0.1, 0.1, alpha)),
-            text(subtitle).size(11).color(Color::from_rgba(0.5, 0.5, 0.5, alpha)),
+            text(subtitle)
+                .size(11)
+                .font(Font::default())
+                .color(Color::from_rgba(0.5, 0.5, 0.5, alpha)),
         ]
         .spacing(2)
         .width(Length::Fill)
         .into()
     );
 
-    // 2. Right Section: Indicator (Spinner or Start Pill)
+    // 2. Right Section: Indicator or Start Badge
     match status {
         Some(ArtifactStatus::Starting) => {
-            // Loading spinner (aligned right)
             row_children.push(
                 container(Space::new())
                     .width(16)
@@ -80,21 +83,30 @@ pub fn artifact_item<'a>(
             );
         }
         _ if is_setup && (status.is_none() || matches!(status, Some(ArtifactStatus::Idle))) => {
-            // Start pill (aligned right)
             row_children.push(
-                container(text("Start").size(10).color(Color::from_rgba(1.0, 1.0, 1.0, alpha)))
-                    .padding([2, 8])
-                    .style(move |_| {
-                        container::Style {
-                            background: Some(Background::Color(Color::from_rgba(0.2, 0.7, 0.2, alpha))),
-                            border: Border {
-                                radius: 10.0.into(),
-                                ..Default::default()
-                            },
+                container(
+                    text("Start")
+                        .size(9)
+                        .font(Font::default())
+                        .color(Color::WHITE)
+                )
+                .padding([4, 10])
+                .style(move |_theme| {
+                    container::Style {
+                        background: Some(Background::Color(Color::from_rgba(0.15, 0.75, 0.15, alpha))),
+                        border: Border {
+                            radius: 16.0.into(),
                             ..Default::default()
-                        }
-                    })
-                    .into(),
+                        },
+                        shadow: iced::Shadow {
+                            color: Color::from_rgba(0.1, 0.5, 0.1, 0.3 * alpha),
+                            offset: iced::Vector::new(0.0, 2.0),
+                            blur_radius: 8.0,
+                        },
+                        ..Default::default()
+                    }
+                })
+                .into()
             );
         }
         _ => {}
@@ -102,31 +114,33 @@ pub fn artifact_item<'a>(
 
     let item_content = Row::with_children(row_children)
         .align_y(Alignment::Center)
-        .spacing(6);
+        .spacing(12);
 
-    button(item_content)
-        .padding(Padding { left: 16.0, right: 16.0, top: 2.0, bottom: 2.0 })
-        .width(Length::Fill)
-        .style(move |_theme, status| {
-            let is_hovered = status == button::Status::Hovered;
-            button::Style {
-                background: if is_hovered {
-                    Some(Color::from_rgba(0.0, 0.0, 0.0, 0.03 * alpha).into())
-                } else {
-                    None
-                },
-                border: Border {
-                    radius: 10.0.into(), // Slightly tighter radius for items
-                    width: 0.0,
-                    color: Color::TRANSPARENT,
-                },
-                text_color: Color::from_rgba(0.1, 0.1, 0.1, alpha),
-                shadow: iced::Shadow::default(),
-                ..Default::default()
-            }
-        })
-        .on_press(Message::OpenArtifact(title))
-        .into()
+    button(
+        container(item_content)
+            .padding(Padding { left: 16.0, right: 12.0, top: 8.0, bottom: 8.0 })
+            .width(Length::Fill)
+    )
+    .width(Length::Fill)
+    .padding(0)
+    .on_press(Message::OpenViewModal(title))
+    .style(move |_theme, status| {
+        let is_hovered = status == button::Status::Hovered;
+        button::Style {
+            background: if is_hovered {
+                Some(Color::from_rgba(0.0, 0.0, 0.0, 0.03 * alpha).into())
+            } else {
+                None
+            },
+            border: Border {
+                radius: 12.0.into(),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
+            ..Default::default()
+        }
+    })
+    .into()
 }
 
 pub fn artifact_card<'a>(
@@ -142,14 +156,14 @@ pub fn artifact_card<'a>(
     .style(move |_theme| container::Style {
         background: Some(Color::from_rgba(1.0, 1.0, 1.0, alpha).into()),
         border: Border {
-            radius: 20.0.into(),
+            radius: 16.0.into(), // Slightly refined radius to match modal
             width: 0.0,
             color: Color::TRANSPARENT,
         },
         shadow: iced::Shadow {
-            color: Color::from_rgba(0.2, 0.8, 0.2, 0.3 * alpha),
-            offset: Vector::new(0.0, 8.0),
-            blur_radius: 16.0,
+            color: Color::from_rgba(0.0, 0.0, 0.0, 0.15 * alpha),
+            offset: Vector::new(0.0, 10.0), // Deep offset
+            blur_radius: 32.0, // Soft shadow
         },
         ..Default::default()
     })

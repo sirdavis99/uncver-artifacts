@@ -1,5 +1,5 @@
 use iced::widget::{button, row, text, Space, svg};
-use iced::{Alignment, Background, Color, Element, Length, Padding};
+use iced::{Alignment, Background, Color, Element, Padding, Font};
 use crate::ui::widget::Message;
 
 pub fn menu_button<'a>(
@@ -31,7 +31,7 @@ pub fn menu_button<'a>(
         row![
             svg_widget,
             Space::new().width(4),
-            text(label).size(11).color(text_color),
+            text(label).size(11).font(Font::default()).color(text_color),
         ]
         .align_y(Alignment::Center)
     )
