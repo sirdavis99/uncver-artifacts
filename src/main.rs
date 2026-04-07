@@ -55,11 +55,14 @@ fn main() -> iced::Result {
 }
 
 fn subscription(_widget: &SearchWidget) -> iced::Subscription<Message> {
-    let tick = iced::time::every(Duration::from_millis(16)).map(|_| Message::Tick);
+    let tick = iced::time::every(Duration::from_millis(16)).map(Message::Tick);
 
     let events = window::events().map(|(id, event)| Message::WindowEvent(id, event));
 
-    iced::Subscription::batch([tick, events])
+    let watcher = uncver_artifacts::artifacts::watcher::watch_artifacts()
+        .map(Message::ArtifactUpdated);
+
+    iced::Subscription::batch([tick, events, watcher])
 }
 
 fn update(widget: &mut SearchWidget, message: Message) -> Task<Message> {

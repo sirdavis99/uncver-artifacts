@@ -1,0 +1,151 @@
+use iced::widget::{button, column, container, row, svg, text, Column, Row, Space};
+use iced::{Alignment, Color, Element, Length, Pixels, Padding, Background, Border, Vector};
+use crate::ui::state::ArtifactStatus;
+use crate::ui::widget::Message;
+use super::icons::PLUS_SVG;
+
+pub fn plus_icon_button<'a>(alpha: f32) -> Element<'a, Message> {
+    let svg_handle = svg::Handle::from_memory(PLUS_SVG.as_bytes().to_vec());
+    button(
+        container(svg(svg_handle).width(12).height(12))
+            .width(Pixels(24.0))
+            .height(Pixels(24.0))
+            .center_x(Pixels(24.0))
+            .center_y(Pixels(24.0))
+    )
+    .padding(0)
+    .style(move |_theme, status| {
+        let is_hovered = status == button::Status::Hovered;
+        button::Style {
+            background: if is_hovered {
+                Some(Color::from_rgba(0.0, 0.0, 0.0, 0.08 * alpha).into())
+            } else {
+                None
+            },
+            border: Border {
+                radius: 6.0.into(),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
+            text_color: Color::from_rgba(0.4, 0.4, 0.4, alpha),
+            shadow: iced::Shadow::default(),
+            ..Default::default()
+        }
+    })
+    .on_press(Message::ToggleCreateMenu)
+    .into()
+}
+
+pub fn artifact_item<'a>(
+    title: String,
+    subtitle: String,
+    is_setup: bool,
+    status: Option<&ArtifactStatus>,
+    alpha: f32,
+) -> Element<'a, Message> {
+    let mut row_children = Vec::new();
+
+    // Loading spinner (left aligned)
+    if let Some(ArtifactStatus::Starting) = status {
+        row_children.push(
+            container(Space::new())
+                .width(16)
+                .height(16)
+                .style(move |_| {
+                    container::Style {
+                        border: Border {
+                            color: Color::from_rgb(0.2, 0.7, 0.2),
+                            width: 2.0,
+                            radius: 8.0.into(),
+                        },
+                        ..Default::default()
+                    }
+                })
+                .into(),
+        );
+    }
+
+    row_children.push(
+        column![
+            text(title.clone())
+                .size(13)
+                .color(Color::from_rgba(0.1, 0.1, 0.1, alpha)),
+            text(subtitle).size(11).color(Color::from_rgba(0.5, 0.5, 0.5, alpha)),
+        ]
+        .spacing(2)
+        .width(Length::Fill)
+        .into()
+    );
+
+    if is_setup && (status.is_none() || matches!(status, Some(ArtifactStatus::Idle))) {
+        row_children.push(
+            container(text("Start").size(10).color(Color::WHITE))
+                .padding([2, 8])
+                .style(move |_| {
+                    container::Style {
+                        background: Some(Background::Color(Color::from_rgb(0.2, 0.7, 0.2))),
+                        border: Border {
+                            radius: 10.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }
+                })
+                .into(),
+        );
+    }
+
+    let item_content = Row::with_children(row_children)
+        .align_y(Alignment::Center)
+        .spacing(10);
+
+    button(item_content)
+        .padding(Padding { left: 16.0, right: 16.0, top: 8.0, bottom: 8.0 }) // Reduced top/bottom from 10 to 8
+        .width(Length::Fill)
+        .style(move |_theme, status| {
+            let is_hovered = status == button::Status::Hovered;
+            button::Style {
+                background: if is_hovered {
+                    Some(Color::from_rgba(0.0, 0.0, 0.0, 0.03 * alpha).into())
+                } else {
+                    None
+                },
+                border: Border {
+                    radius: 12.0.into(),
+                    width: 0.0,
+                    color: Color::TRANSPARENT,
+                },
+                text_color: Color::from_rgba(0.1, 0.1, 0.1, alpha),
+                shadow: iced::Shadow::default(),
+                ..Default::default()
+            }
+        })
+        .on_press(Message::OpenArtifact(title))
+        .into()
+}
+
+pub fn artifact_card<'a>(
+    content: Column<'a, Message>,
+    alpha: f32,
+) -> Element<'a, Message> {
+    container(
+        content
+            .padding(Padding { top: 8.0, bottom: 4.0, left: 4.0, right: 4.0 }) // Reduced top from 12 to 8, bottom from 8 to 4
+    )
+    .width(Pixels(400.0))
+    .style(move |_theme| container::Style {
+        background: Some(Color::from_rgba(1.0, 1.0, 1.0, alpha).into()),
+        border: Border {
+            radius: 20.0.into(),
+            width: 0.0,
+            color: Color::TRANSPARENT,
+        },
+        shadow: iced::Shadow {
+            color: Color::from_rgba(0.0, 0.0, 0.0, 0.1 * alpha),
+            offset: Vector::new(0.0, 8.0),
+            blur_radius: 16.0,
+        },
+        ..Default::default()
+    })
+    .into()
+}

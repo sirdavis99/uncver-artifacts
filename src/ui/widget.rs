@@ -1,355 +1,308 @@
-use crate::ui::state::{Corner, Position, State, Trigger, WidgetMode};
+use iced::widget::{button, column, container, row, text, Row, Space};
+use iced::{window, Alignment, Color, Element, Length, Padding, Task};
+use tracing::info;
+use rfd::FileDialog;
+use std::path::PathBuf;
 
-use iced::widget::{container, row, text, text_input, Space};
-use iced::{window, Alignment, Color, Element, Font, Length, Pixels, Task, Theme};
+use crate::ui::state::{State, ArtifactStatus};
+use crate::ui::components;
+use crate::artifacts::{ArtifactConfig, ArtifactManager};
 
-pub const COLLAPSED_SIZE: f32 = 48.0;
-pub const EXPANDED_WIDTH: f32 = 380.0;
-pub const EXPANDED_HEIGHT: f32 = 48.0;
-
-/// Extra transparent padding on all sides so drop shadows are never clipped by the OS window.
-pub const WINDOW_PAD: f32 = 40.0;
-pub const WINDOW_W: f32 = EXPANDED_WIDTH + WINDOW_PAD * 2.0; // 460
-pub const WINDOW_H: f32 = 300.0; // Increased to fit search results card
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    Hover(bool),
-    Click,
-    IconClick,
-    KeyPress(char),
-    Backspace,
-    Clear,
-    Escape,
-    ClickOutside,
-    SnapToCorner,
-    UpdateLayout { width: f32, height: f32 },
-    WindowEvent(window::Id, window::Event),
-    Tick,
-    OpenArtifact(String),
-}
+pub const WINDOW_W: f32 = 460.0;
+pub const WINDOW_H: f32 = 600.0;
 
 pub struct SearchWidget {
     pub state: State,
-    pub layout_width: f32,
-    pub layout_height: f32,
-    pub window_id: Option<window::Id>,
+    pub artifacts: ArtifactManager,
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    SearchChanged(String),
+    ToggleSearch,
+    Clear,
+    ToggleCreateMenu,
+    CreateArtifact,
+    ArtifactCreated(String),
+    ArtifactUpdated(PathBuf),
+    OpenArtifact(String),
+    ArtifactStarted(String, String),
+    ArtifactError(String, String),
+    Tick(std::time::Instant),
+    WindowEvent(window::Id, window::Event),
+    None,
 }
 
 impl SearchWidget {
-    pub fn new() -> Self {
-        Self {
-            state: State::default(),
-            layout_width: EXPANDED_WIDTH,
-            layout_height: EXPANDED_HEIGHT,
-            window_id: None,
-        }
+    pub fn new() -> (Self, Task<Message>) {
+        let artifacts = ArtifactManager::new().expect("Failed to initialize ArtifactManager");
+        (
+            Self {
+                state: State::default(),
+                artifacts,
+            },
+            Task::none(),
+        )
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Hover(hovered) => {
-                self.state.is_hovered = hovered;
+            Message::SearchChanged(val) => {
+                self.state.input_text = val;
+                Task::none()
             }
-            Message::Click => {
-                // Clicking the dormant input area expands the pill
-                if self.state.animation_progress.target == 0.0 {
-                    self.state.animation_progress.target = 1.0;
-                    self.state.is_animating = true;
-                }
-            }
-            Message::IconClick => {
-                // The search icon is the primary toggle
-                if self.state.animation_progress.target == 0.0 {
-                    self.state.animation_progress.target = 1.0;
+            Message::ToggleSearch => {
+                if self.state.mode == crate::ui::state::WidgetMode::Collapsed {
+                    self.state.mode = crate::ui::state::WidgetMode::SearchMode;
                 } else {
-                    self.state.clear_input();
-                    self.state.animation_progress.target = 0.0;
+                    self.state.mode = crate::ui::state::WidgetMode::Collapsed;
+                    self.state.input_text.clear();
                 }
-                self.state.is_animating = true;
-            }
-            Message::KeyPress(c) => {
-                if c == '\u{7f}' || c == '\u{8}' {
-                    self.state.backspace();
-                } else if c == '\u{1b}' {
-                    self.state.transition(Trigger::Escape);
-                    self.state.animation_progress.target = 0.0;
-                    self.state.is_animating = true;
-                } else if c == '\r' || c == '\n' {
-                    tracing::info!("Search submitted: {}", self.state.input_text);
-                } else if c.is_ascii_graphic() || c == ' ' {
-                    self.state.update_input(c);
-                    // Ensure we stay expanded if typing
-                    self.state.animation_progress.target = 1.0;
-                }
-            }
-            Message::Backspace => {
-                self.state.backspace();
+                Task::none()
             }
             Message::Clear => {
                 self.state.clear_input();
-                self.state.animation_progress.target = 0.0;
-                self.state.is_animating = true;
+                Task::none()
             }
-            Message::Escape => {
-                self.state.transition(Trigger::Escape);
-                self.state.animation_progress.target = 0.0;
-                self.state.is_animating = true;
+            Message::ToggleCreateMenu => {
+                self.state.show_create_menu = !self.state.show_create_menu;
+                Task::none()
             }
-            Message::ClickOutside => {
-                // Collapse on click outside if empty
-                if self.state.input_text.is_empty() {
-                    self.state.animation_progress.target = 0.0;
-                    self.state.is_animating = true;
-                }
-            }
-            Message::SnapToCorner => {
-                self.state.transition(Trigger::SnapToCorner);
-            }
-            Message::UpdateLayout { width, height } => {
-                self.layout_width = width;
-                self.layout_height = height;
-            }
-            Message::OpenArtifact(title) => {
-                tracing::info!("Opening artifact: {}", title);
-                return Task::none();
-            }
-            Message::WindowEvent(id, event) => {
-                if self.window_id.is_none() {
-                    if let window::Event::Opened { .. } = event {
-                        self.window_id = Some(id);
-                    }
-                }
-            }
-            Message::Tick => {
-                if self.state.is_animating {
-                    let diff = self.state.animation_progress.target
-                        - self.state.animation_progress.progress;
-                    if diff.abs() < 0.001 {
-                        self.state.animation_progress.progress =
-                            self.state.animation_progress.target;
-                        self.state.is_animating = false;
-                        if self.state.animation_progress.target == 1.0 {
-                            self.state.mode = WidgetMode::SearchMode;
-                        } else {
-                            self.state.mode = WidgetMode::Collapsed;
+            Message::CreateArtifact => {
+                self.state.show_create_menu = false;
+                let manager = self.artifacts.clone();
+                Task::perform(
+                    async move {
+                        if let Some(path) = FileDialog::new().pick_folder() {
+                            let name = format!("Artifact-{}", path.file_name().unwrap_or_default().to_string_lossy());
+                            let config = ArtifactConfig {
+                                name: name.clone(),
+                                description: None,
+                                url: None,
+                                local_path: Some(path.to_string_lossy().to_string()),
+                                container_image: Some("ghcr.io/podman/hello:latest".to_string()),
+                            };
+                            if let Ok(_) = manager.create_artifact(&config) {
+                                return Some(name);
+                            }
                         }
-                    } else {
-                        self.state.animation_progress.progress += diff * 0.2;
+                        None
+                    },
+                    |res| {
+                        if let Some(name) = res {
+                            Message::ArtifactCreated(name)
+                        } else {
+                            Message::None
+                        }
+                    }
+                )
+            }
+            Message::ArtifactCreated(_name) => {
+                info!("Artifact created!");
+                Task::none()
+            }
+            Message::ArtifactUpdated(_path) => {
+                info!("Artifact file updated!");
+                Task::none()
+            }
+            Message::OpenArtifact(name) => {
+                let status = self.state.artifact_statuses.get(&name).cloned().unwrap_or(ArtifactStatus::Idle);
+                
+                match status {
+                    ArtifactStatus::Idle => {
+                        self.state.artifact_statuses.insert(name.clone(), ArtifactStatus::Starting);
+                        let name_clone = name.clone();
+                        let manager = self.artifacts.clone();
+                        
+                        Task::perform(
+                            async move {
+                                let artifacts = manager.list_artifacts().await.unwrap_or_default();
+                                if let Some(artifact) = artifacts.into_iter().find(|a| a.name == name_clone) {
+                                    let runner = crate::podman::runner::PodmanRunner::new();
+                                    let image = artifact.container_image.unwrap_or_else(|| "ghcr.io/podman/hello:latest".to_string());
+                                    
+                                    let res = tokio::task::spawn_blocking(move || {
+                                        runner.run(&image)
+                                    }).await;
+
+                                    match res {
+                                        Ok(Ok(id)) => Ok(id),
+                                        Ok(Err(e)) => Err(e.to_string()),
+                                        Err(e) => Err(e.to_string()),
+                                    }
+                                } else {
+                                    Err("Artifact not found".to_string())
+                                }
+                            },
+                            move |res| match res {
+                                Ok(id) => Message::ArtifactStarted(name.clone(), id),
+                                Err(e) => Message::ArtifactError(name.clone(), e),
+                            }
+                        )
+                    }
+                    ArtifactStatus::Running(id) => {
+                        info!("Artifact {} already running with id {}", name, id);
+                        Task::none()
+                    }
+                    ArtifactStatus::Starting => {
+                        info!("Artifact {} is starting...", name);
+                        Task::none()
+                    }
+                    ArtifactStatus::Error(e) => {
+                        info!("Found error for {}: {}. Retrying...", name, e);
+                        self.state.artifact_statuses.insert(name, ArtifactStatus::Idle);
+                        Task::none()
                     }
                 }
             }
+            Message::ArtifactStarted(name, id) => {
+                self.state.artifact_statuses.insert(name, ArtifactStatus::Running(id));
+                Task::none()
+            }
+            Message::ArtifactError(name, err) => {
+                self.state.artifact_statuses.insert(name, ArtifactStatus::Error(err));
+                Task::none()
+            }
+            Message::Tick(_now) => {
+                if self.state.mode != crate::ui::state::WidgetMode::Collapsed && self.state.animation_progress.progress < 1.0 {
+                    self.state.animation_progress.progress = (self.state.animation_progress.progress + 0.1).min(1.0);
+                } else if self.state.mode == crate::ui::state::WidgetMode::Collapsed && self.state.animation_progress.progress > 0.0 {
+                    self.state.animation_progress.progress = (self.state.animation_progress.progress - 0.1).max(0.0);
+                }
+
+                // Handle recommendations delay
+                if self.state.mode != crate::ui::state::WidgetMode::Collapsed && self.state.animation_progress.progress >= 1.0 {
+                    if !self.state.show_recommendations {
+                        self.state.recommendations_timer += 0.05; // ~50ms per tick roughly (16ms * 3 is 48ms, I'll use 0.05 to reach 1.0 in ~20 ticks)
+                        if self.state.recommendations_timer >= 1.0 {
+                            self.state.show_recommendations = true;
+                        }
+                    }
+                } else {
+                    self.state.show_recommendations = false;
+                    self.state.recommendations_timer = 0.0;
+                }
+                Task::none()
+            }
+            Message::WindowEvent(_id, event) => {
+                match event {
+                    window::Event::Focused => self.state.is_hovered = true,
+                    window::Event::Unfocused => self.state.is_hovered = false,
+                    _ => {}
+                }
+                Task::none()
+            }
+            Message::None => Task::none(),
         }
-        Task::none()
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let p = self.state.animation_progress.progress; // 0.0 (circle) → 1.0 (pill)
+        let alpha = self.state.animation_progress.progress;
         
-        // ── Dimensions ───────────────────────────────────────────
-        let pill_w = COLLAPSED_SIZE + (EXPANDED_WIDTH - COLLAPSED_SIZE) * p;
-        let pill_h = EXPANDED_HEIGHT;
-        let radius = 24.0; 
+        let width = 48.0 + (400.0 - 48.0) * alpha;
+        let is_active = self.state.mode != crate::ui::state::WidgetMode::Collapsed;
 
-        // ── Inactive / Hover State ───────────────────────────────
-        // Only applies to the 'minimized' (p=0) style
-        let is_idle = p < 0.01 && !self.state.is_hovered;
-        let bg_alpha = if is_idle { 0.5 } else { 1.0 };
-        let shadow_alpha = if is_idle { 0.05 } else { 0.18 };
+        let search_bar = components::search_bar(
+            &self.state.input_text,
+            width,
+            alpha,
+            is_active
+        );
 
-        let pill_shadow = iced::Shadow {
-            color: Color::from_rgba(0.0, 0.0, 0.0, shadow_alpha),
-            offset: iced::Vector::new(0.0, 4.0),
-            blur_radius: if is_idle { 8.0 } else { 20.0 },
-        };
-
-        // ── Search Icon Button ───────────────────────────────────
-        let icon_btn = crate::ui::components::search_icon_button();
-
-        let pill: Element<'_, Message> = if p < 0.1 {
-            // CIRCLE MODE: icon perfectly centered inside a 48px circle
-            container(icon_btn)
-                .width(Length::Fixed(COLLAPSED_SIZE))
-                .height(Length::Fixed(COLLAPSED_SIZE))
-                .align_x(Alignment::Center)
+        if self.state.show_recommendations {
+            let mut results_col = column![
+                row![
+                    text("RECOMMENDED ARTIFACTS")
+                        .size(10)
+                        .color(Color::from_rgba(0.5, 0.5, 0.5, alpha)),
+                    Space::new().width(Length::Fill),
+                    components::plus_icon_button(alpha),
+                ]
                 .align_y(Alignment::Center)
-                .style(move |_theme: &Theme| container::Style {
-                    background: Some(Color::from_rgba(1.0, 1.0, 1.0, bg_alpha).into()),
-                    border: iced::Border {
-                        radius: iced::border::Radius::from(radius),
-                        width: 0.0,
-                        color: Color::TRANSPARENT,
-                    },
-                    shadow: pill_shadow,
-                    ..Default::default()
-                })
-                .into()
-        } else {
-            // EXPANDED MODE: icon + input, fully left-aligned inside dynamic pill_w
-            let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
+                .padding([0, 12])
+            ].spacing(4);
 
-            // Dynamically calculate input field width to prevent row overflow
-            let shows_clear = !self.state.input_text.is_empty();
-            let mut input_w = pill_w - 4.0 - 8.0; // Subtract total padding
-            input_w -= 28.0 + 4.0; // Subtract search icon and initial gap
-            if shows_clear {
-                input_w -= 6.0 + 26.0; // Subtract clear button gap and button width
-            }
-            input_w = input_w.max(1.0);
+            if self.state.show_create_menu {
+                let create_menu = container(
+                    button(
+                        row![
+                            text("+").size(14),
+                            Space::new().width(8),
+                            text("Artifact").size(13),
+                        ]
+                        .align_y(Alignment::Center)
+                    )
+                    .on_press(Message::CreateArtifact)
+                    .padding([8, 16])
+                    .style(|_theme, status| {
+                        let is_hovered = status == button::Status::Hovered;
+                        button::Style {
+                            background: if is_hovered {
+                                Some(Color::from_rgba(0.0, 0.0, 0.0, 0.05).into())
+                            } else {
+                                Some(Color::from_rgba(0.0, 0.0, 0.0, 0.02).into())
+                            },
+                            border: iced::Border {
+                                radius: 8.0.into(),
+                                width: 0.0,
+                                color: Color::TRANSPARENT,
+                            },
+                            text_color: Color::BLACK,
+                            shadow: iced::Shadow::default(),
+                            snap: false,
+                        }
+                    })
+                )
+                .padding([4, 12])
+                .width(Length::Fill);
 
-            let input_field = text_input("Search artifacts...", &self.state.input_text)
-                .on_input(|s| {
-                    if s.len() < self.state.input_text.len() {
-                        Message::Backspace
-                    } else if let Some(c) = s.chars().last() {
-                        Message::KeyPress(c)
-                    } else {
-                        Message::Backspace
-                    }
-                })
-                .padding(0)
-                .size(18)
-                .font(Font::DEFAULT)
-                .line_height(Pixels(24.0))
-                .width(Length::Fill)
-                .style(move |_theme, _| text_input::Style {
-                    background: Color::TRANSPARENT.into(),
-                    border: iced::Border { radius: 0.0.into(), width: 0.0, color: Color::TRANSPARENT },
-                    icon: Color::from_rgba(0.0, 0.0, 0.0, input_alpha),
-                    placeholder: Color::from_rgba(0.55, 0.55, 0.55, input_alpha),
-                    value: Color::from_rgba(0.2, 0.2, 0.2, input_alpha),
-                    selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
-                });
-
-            let mut expanded_row = iced::widget::Row::new()
-                .push(Space::new().width(12.0))
-                .push(icon_btn)
-                .push(Space::new().width(10.0))
-                .push(input_field)
-                .spacing(0)
-                .align_y(Alignment::Center);
-
-            if shows_clear {
-                expanded_row = expanded_row
-                    .push(crate::ui::components::clear_button(input_alpha))
-                    .push(Space::new().width(12.0));
-            } else {
-                expanded_row = expanded_row.push(Space::new().width(12.0));
+                results_col = results_col.push(create_menu);
             }
 
-            container(expanded_row)
-                .width(Length::Fixed(pill_w))
-                .height(Length::Fixed(pill_h))
-                .align_x(Alignment::Start)
-                .align_y(Alignment::Center)
-                .padding(iced::Padding { left: 4.0, top: 0.0, right: 8.0, bottom: 0.0 })
-                .style(move |_theme: &Theme| container::Style {
-                    background: Some(Color::from_rgba(1.0, 1.0, 1.0, bg_alpha).into()),
-                    border: iced::Border {
-                        radius: iced::border::Radius::from(radius),
-                        width: 0.0,
-                        color: Color::TRANSPARENT,
-                    },
-                    shadow: pill_shadow,
-                    ..Default::default()
-                })
-                .into()
-        };
+            let dummy_artifacts = vec![
+                ("File Manager".to_string(), "Podman GUI Helper".to_string()),
+                ("Terminal".to_string(), "Container Console".to_string()),
+            ];
 
-        // ── Main UI Assembly ──────────────────────────────────────
-        let content_col = iced::widget::Column::new()
-            .push(self.view_results_card(p))
-            .push(Space::new().height(12.0))
-            .push(pill)
-            .align_x(Alignment::Center);
+            for (title, subtitle) in dummy_artifacts {
+                let status = self.state.artifact_statuses.get(&title);
+                let is_setup = self.state.setup_artifacts.contains(&title);
+                results_col = results_col.push(components::artifact_item(title, subtitle, is_setup, status, alpha));
+            }
 
-        iced::widget::mouse_area(
-            container(content_col)
-                .width(Length::Fill)
-                .height(Length::Fill)
+            let dropdown = components::artifact_card(results_col, alpha);
+
+            container(
+                column![
+                    dropdown,
+                    Space::new().height(12),
+                    search_bar,
+                ]
                 .align_x(Alignment::Center)
-                .align_y(Alignment::Center)
-                .padding(WINDOW_PAD)
-                .style(|_theme: &Theme| container::Style {
-                    background: Some(Color::TRANSPARENT.into()),
-                    ..Default::default()
-                })
-        )
-        .on_enter(Message::Hover(true))
-        .on_exit(Message::Hover(false))
-        .into()
-    }
-
-    fn view_results_card(&self, p: f32) -> Element<'_, Message> {
-        let alpha = (p * 4.0 - 3.0).clamp(0.0, 1.0); // Fades in only at the very end of expansion
-        
-        if alpha <= 0.0 {
-            return Space::new().height(0.0).into();
-        }
-
-        let header = iced::widget::Row::new()
-            .push(text("RECOMMENDED ARTIFACTS")
-                .size(10)
-                .color(Color::from_rgba(0.5, 0.5, 0.5, alpha))
+                .spacing(12)
             )
-            .padding(iced::Padding { left: 16.0, top: 12.0, right: 16.0, bottom: 4.0 });
-
-        let results_list = iced::widget::Column::new()
-            .push(header)
-            .push(crate::ui::components::result_item("Podman Desktop", "Local container management", alpha))
-            .push(crate::ui::components::result_item("Iced Documentation", "Cross-platform GUI library", alpha))
-            .push(Space::new().height(8.0))
-            .spacing(4.0);
-
-        container(results_list)
-            .width(Length::Fixed(EXPANDED_WIDTH))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .align_y(Alignment::End)
+            .padding(24)
             .style(move |_theme| container::Style {
-                background: Some(Color::from_rgba(1.0, 1.0, 1.0, alpha).into()),
-                border: iced::Border {
-                    radius: 24.0.into(),
-                    width: 0.0,
-                    color: Color::TRANSPARENT,
-                },
-                shadow: iced::Shadow {
-                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.15 * alpha),
-                    offset: iced::Vector::new(0.0, 4.0),
-                    blur_radius: 16.0,
-                },
+                background: Some(Color::from_rgba(0.2, 0.8, 0.2, 0.02).into()), // Subtle green background tint
                 ..Default::default()
             })
             .into()
-    }
-    
-    pub fn get_position(&self, screen_width: f32, screen_height: f32) -> Position {
-        if self.state.corner_snap != Corner::None {
-            match self.state.corner_snap {
-                Corner::TopRight => Position::top_right(
-                    screen_width,
-                    screen_height,
-                    self.layout_width,
-                    self.layout_height,
-                    20.0,
-                ),
-                _ => Position::center(
-                    screen_width,
-                    screen_height,
-                    self.layout_width,
-                    self.layout_height,
-                ),
-            }
         } else {
-            Position::center(
-                screen_width,
-                screen_height,
-                self.layout_width,
-                self.layout_height,
-            )
+            container(search_bar)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x(Length::Fill)
+                .align_y(Alignment::End)
+                .padding(24)
+                .style(move |_theme| container::Style {
+                    background: Some(Color::from_rgba(0.2, 0.8, 0.2, 0.02).into()),
+                    ..Default::default()
+                })
+                .into()
         }
-    }
-}
-
-impl Default for SearchWidget {
-    fn default() -> Self {
-        Self::new()
     }
 }

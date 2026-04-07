@@ -21,7 +21,13 @@ pub enum PodmanError {
     InstallError(String),
 }
 
+use std::sync::Arc;
+
 pub struct Podman {
+    pub(crate) inner: Arc<PodmanInner>,
+}
+
+pub struct PodmanInner {
     installer: PodmanInstaller,
     machine: PodmanMachine,
     runner: PodmanRunner,
@@ -30,38 +36,50 @@ pub struct Podman {
 impl Podman {
     pub fn new() -> Self {
         Self {
-            installer: PodmanInstaller::new(),
-            machine: PodmanMachine::new(),
-            runner: PodmanRunner::new(),
+            inner: Arc::new(PodmanInner {
+                installer: PodmanInstaller::new(),
+                machine: PodmanMachine::new(),
+                runner: PodmanRunner::new(),
+            }),
         }
     }
+}
 
+impl Clone for Podman {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+}
+
+impl Podman {
     pub fn ensure_installed(&self) -> Result<()> {
-        if !self.installer.is_installed()? {
+        if !self.inner.installer.is_installed()? {
             tracing::info!("Podman not found, initiating installation...");
-            self.installer.install()?;
+            self.inner.installer.install()?;
         }
         Ok(())
     }
 
     pub fn ensure_machine_running(&self) -> Result<()> {
-        if !self.machine.is_running()? {
+        if !self.inner.machine.is_running()? {
             tracing::info!("Podman machine not running, starting...");
-            self.machine.start()?;
+            self.inner.machine.start()?;
         }
         Ok(())
     }
 
     pub fn run(&self, image: &str) -> Result<String> {
-        self.runner.run(image)
+        self.inner.runner.run(image)
     }
 
     pub fn is_available(&self) -> bool {
-        self.installer.is_installed().unwrap_or(false)
+        self.inner.installer.is_installed().unwrap_or(false)
     }
 
     pub fn is_machine_running(&self) -> bool {
-        self.machine.is_running().unwrap_or(false)
+        self.inner.machine.is_running().unwrap_or(false)
     }
 }
 

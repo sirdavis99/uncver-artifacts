@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WidgetMode {
     Collapsed,
@@ -31,6 +33,14 @@ pub enum Trigger {
     SnapToCorner,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArtifactStatus {
+    Idle,
+    Starting,
+    Running(String), // container id
+    Error(String),
+}
+
 #[derive(Debug, Clone)]
 pub struct State {
     pub mode: WidgetMode,
@@ -40,6 +50,12 @@ pub struct State {
     pub position: Position,
     pub corner_snap: Corner,
     pub is_animating: bool,
+    pub show_create_menu: bool,
+    pub show_recommendations: bool,
+    pub recommendations_timer: f32,
+    pub artifact_statuses: HashMap<String, ArtifactStatus>,
+    pub setup_artifacts: Vec<String>,
+    pub new_artifact_name: String,
 }
 
 impl Default for State {
@@ -52,6 +68,16 @@ impl Default for State {
             position: Position::default(),
             corner_snap: Corner::None,
             is_animating: false,
+            show_create_menu: false,
+            show_recommendations: false,
+            recommendations_timer: 0.0,
+            artifact_statuses: {
+                let mut m = HashMap::new();
+                m.insert("File Manager".to_string(), ArtifactStatus::Starting);
+                m
+            },
+            setup_artifacts: vec!["File Manager".to_string()], // Mock setup
+            new_artifact_name: String::new(),
         }
     }
 }

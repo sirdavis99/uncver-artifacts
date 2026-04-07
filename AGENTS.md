@@ -11,21 +11,21 @@
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Language | Rust (Edition 2021) |
-| GUI Framework | `iced` 0.14 (with `image`, `svg`, `tokio` features) |
-| Async Runtime | `tokio` 1 (full features) |
-| Window/Tray | `tao` 0.27, `winit` 0.29 |
-| Error Handling | `anyhow` + `thiserror` |
-| Logging | `tracing` + `tracing-subscriber` |
-| Serialization | `serde` + `serde_json` |
-| Container Engine | Podman (managed via CLI subprocess calls) |
-| Platform-specific | `objc` (macOS), `winapi` (Windows) |
+| Layer              | Technology                                        |
+|--------------------|---------------------------------------------------|
+| Language           | Rust (Edition 2021)                               |
+| GUI Framework      | `iced` 0.14 (with `image`, `svg`, `tokio` features) |
+| Async Runtime      | `tokio` 1 (full features)                         |
+| Window/Tray        | `tao` 0.27, `winit` 0.29                          |
+| Error Handling     | `anyhow` + `thiserror`                            |
+| Logging            | `tracing` + `tracing-subscriber`                  |
+| Serialization      | `serde` + `serde_json`                            |
+| Container Engine   | Podman (managed via CLI subprocess calls)         |
+| Platform-specific  | `objc` (macOS), `winapi` (Windows)                |
 
 ## Project Structure
 
-```
+```bash
 src/
 ├── main.rs          # App entry point — window settings, iced::application wiring
 ├── lib.rs           # Crate root — re-exports SearchWidget
@@ -64,12 +64,13 @@ src/
 - Always run `cargo check` after any Rust edits to catch compile errors early
 - Prefer `anyhow::Result` for fallible functions; use `thiserror` for library error types
 - Keep `widget.rs` as the single source of truth for all UI state and messages
+- **Modular UI Components**: Keep `src/ui/components/` split into small, logical files (icons, search, artifact, etc.). Max file size for components should be ~150 lines.
 - Do not add new direct dependencies without checking `Cargo.toml` first
 
 ## Knowledge Links
 
-| Topic | File |
-|---|---|
-| Podman integration patterns | `.agent/knowledge/podman.md` |
-| UI widget & state patterns | `.agent/knowledge/ui.md` |
-| Build & development setup | `.agent/knowledge/build.md` |
+| Topic                        | File                          |
+|------------------------------|-------------------------------|
+| Podman integration patterns  | `.agent/knowledge/podman.md`  |
+| UI widget & state patterns   | `.agent/knowledge/ui.md`      |
+| Build & development setup    | `.agent/knowledge/build.md`   |
