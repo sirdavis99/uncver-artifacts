@@ -144,21 +144,26 @@ impl SearchWidget {
         // ── Dimensions ───────────────────────────────────────────
         let pill_w = COLLAPSED_SIZE + (EXPANDED_WIDTH - COLLAPSED_SIZE) * p;
         let pill_h = EXPANDED_HEIGHT;
-        let radius = 24.0; // Stadium ends for a 48px height pill
+        let radius = 24.0; 
 
-        // ── Dynamic Shadow ───────────────────────────────────────
+        // ── Inactive / Hover State ───────────────────────────────
+        // Only applies to the 'minimized' (p=0) style
+        let is_idle = p < 0.01 && !self.state.is_hovered;
+        let bg_alpha = if is_idle { 0.5 } else { 1.0 };
+        let shadow_alpha = if is_idle { 0.05 } else { 0.18 };
+
         let pill_shadow = iced::Shadow {
-            color: Color::from_rgba(0.0, 0.0, 0.0, 0.18),
+            color: Color::from_rgba(0.0, 0.0, 0.0, shadow_alpha),
             offset: iced::Vector::new(0.0, 4.0),
-            blur_radius: 20.0,
+            blur_radius: if is_idle { 8.0 } else { 20.0 },
         };
 
         // ── Search Icon Button ───────────────────────────────────
         let svg_handle = svg::Handle::from_memory(SEARCH_SVG.as_bytes().to_vec());
         let icon_btn = button(
             container(svg(svg_handle).width(24).height(24))
-                .width(Length::Fixed(40.0))
-                .height(Length::Fixed(40.0))
+                .width(Length::Fixed(32.0))
+                .height(Length::Fixed(32.0))
                 .center_x(Length::Fill)
                 .center_y(Length::Fill)
         )
@@ -191,21 +196,21 @@ impl SearchWidget {
                 }
             })
             .padding(0)
-            .size(20)
+            .size(18) // Tighter font
             .font(Font::DEFAULT)
-            .line_height(Pixels(30.0))
-            .width(Length::Fill) // GROW to match
+            .line_height(Pixels(24.0))
+            .width(Length::Fill) 
             .style(move |_theme, _| text_input::Style {
                 background: Color::TRANSPARENT.into(),
                 border: iced::Border { radius: 0.0.into(), width: 0.0, color: Color::TRANSPARENT },
                 icon: Color::from_rgba(0.0, 0.0, 0.0, input_alpha),
                 placeholder: Color::from_rgba(0.55, 0.55, 0.55, input_alpha),
-                value: Color::from_rgba(0.25, 0.25, 0.25, input_alpha),
+                value: Color::from_rgba(0.2, 0.2, 0.2, input_alpha),
                 selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
             });
 
-            // Reduced spacing between icon and input
-            items.push(Space::new().width(4.0).into());
+            // Minimal spacing after icon
+            items.push(Space::new().width(2.0).into());
             items.push(input_field.into());
             
             if !self.state.input_text.is_empty() {
@@ -220,15 +225,13 @@ impl SearchWidget {
                         ..Default::default()
                     });
                 
-                items.push(Space::new().width(8.0).into());
+                items.push(Space::new().width(4.0).into());
                 items.push(clear_button.into());
             }
             
-            // Add some padding at the end of the input area if it fills
             items.push(Space::new().width(8.0).into());
         }
 
-        // Reduced vertical and horizontal padding
         let inner = container(
             row(items)
                 .spacing(0)
@@ -236,7 +239,12 @@ impl SearchWidget {
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .padding(4.0) // 4px padding + 40px icon = 44px. Centered in 48px.
+        .padding(iced::Padding {
+            left: 8.0, 
+            top: 4.0, 
+            right: 8.0, 
+            bottom: 4.0,
+        })
         .align_y(Alignment::Center)
         .align_x(Alignment::Start);
 
@@ -245,7 +253,7 @@ impl SearchWidget {
             .width(Length::Fixed(pill_w))
             .height(Length::Fixed(pill_h))
             .style(move |_theme: &Theme| container::Style {
-                background: Some(Color::WHITE.into()),
+                background: Some(Color::from_rgba(1.0, 1.0, 1.0, bg_alpha).into()),
                 border: iced::Border {
                     radius: iced::border::Radius::from(radius),
                     width: 0.0,
@@ -255,7 +263,7 @@ impl SearchWidget {
                 ..Default::default()
             });
 
-        // Outer container ensures the pill is centered in the window
+        // Ensure the outer container captures mouse events for hover
         container(pill)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -265,6 +273,8 @@ impl SearchWidget {
                 background: Some(Color::TRANSPARENT.into()),
                 ..Default::default()
             })
+            .on_mouseenter(Message::Hover(true))
+            .on_mouseleave(Message::Hover(false))
             .into()
     }
     
