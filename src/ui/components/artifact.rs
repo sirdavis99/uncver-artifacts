@@ -130,15 +130,15 @@ pub fn artifact_item<'a>(
 }
 
 pub fn artifact_card<'a>(
-    content: Column<'a, Message>,
+    content: impl Into<Element<'a, Message>>,
     alpha: f32,
 ) -> Element<'a, Message> {
     container(
-        content
+        container(content)
             .padding(Padding { top: 4.0, bottom: 1.0, left: 4.0, right: 4.0 })
     )
     .width(Pixels(400.0))
-    .height(Pixels(200.0)) // Ensure the card only takes as much height as its content
+    .height(Pixels(200.0)) // Ensure the card maintains a solid minimal aesthetic block
     .style(move |_theme| container::Style {
         background: Some(Color::from_rgba(1.0, 1.0, 1.0, alpha).into()),
         border: Border {

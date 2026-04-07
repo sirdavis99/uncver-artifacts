@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, text, Space, Column};
+use iced::widget::{column, container, row, text, Space, Column, stack};
 use iced::{Alignment, Color, Element, Length, Pixels};
 use crate::ui::components;
 use crate::ui::state::WidgetMode;
@@ -17,31 +17,14 @@ impl SearchWidget {
             is_active
         );
 
-        let content = if self.state.show_recommendations {
-            self.render_recommendations(search_bar, alpha)
-        } else {
-            column![search_bar].into()
-        };
-
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .align_y(Alignment::End)
-            .padding(24)
-            .into()
-    }
-
-    fn render_recommendations<'a>(&self, search_bar: Element<'a, Message>, alpha: f32) -> Element<'a, Message> {
+        let mut results_col = Column::new()
+            .spacing(2)
+            .width(400);
         let title = if self.state.input_text.is_empty() {
             "RECOMMENDED ARTIFACTS"
         } else {
             "SEARCH RESULTS"
         };
-
-        let mut results_col = Column::new()
-            .spacing(2)
-            .width(400);
 
         results_col = results_col.push(
             row![
@@ -85,14 +68,47 @@ impl SearchWidget {
             }
         }
 
-        let recommended_artifacts = components::artifact_card(results_col, alpha);
+        let content: Element<'_, Message> = if self.state.show_recommendations {
+            let recommended_artifacts = components::artifact_card(results_col, alpha);
+            column![
+                recommended_artifacts,
+                search_bar,
+            ]
+            .align_x(Alignment::Center)
+            .spacing(10)
+            .into()
+        } else {
+            column![search_bar].into()
+        };
 
-        column![
-            recommended_artifacts,
-            search_bar,
-        ]
-        .align_x(Alignment::Center)
-        .spacing(10)
-        .into()
+        let main_view = container(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .align_y(Alignment::End)
+            .padding(24);
+
+        if self.state.show_create_modal {
+            let modal = components::create_artifact_modal(
+                &self.state.create_form_title,
+                &self.state.create_form_description,
+                self.state.create_form_folder.as_deref(),
+                alpha,
+            );
+
+            let overlay = container(modal)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x(Length::Fill)
+                .center_y(Length::Fill)
+                .style(move |_theme| container::Style {
+                    background: Some(iced::Background::Color(Color::TRANSPARENT)),
+                    ..Default::default()
+                });
+
+            stack![main_view, overlay].into()
+        } else {
+            main_view.into()
+        }
     }
 }

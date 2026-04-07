@@ -8,7 +8,7 @@ pub fn create_artifact_menu<'a>(alpha: f32) -> Element<'a, Message> {
     container(
         scrollable(
             row![
-                menu_item::menu_button("Create Artifact".to_string(), icons::CREATE_SVG, Some(Message::CreateArtifact), alpha),
+                menu_item::menu_button("Create Artifact".to_string(), icons::CREATE_SVG, Some(Message::OpenCreateModal), alpha),
                 menu_item::menu_button("Image".to_string(), icons::IMAGE_SVG, None, alpha),
                 menu_item::menu_button("Video".to_string(), icons::VIDEO_SVG, None, alpha),
                 menu_item::menu_button("Folder".to_string(), icons::FOLDER_SVG, None, alpha),

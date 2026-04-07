@@ -22,6 +22,10 @@ pub struct State {
     pub last_tick: Instant,
     pub show_recommendations: bool,
     pub show_create_menu: bool,
+    pub show_create_modal: bool,
+    pub create_form_title: String,
+    pub create_form_description: String,
+    pub create_form_folder: Option<std::path::PathBuf>,
     pub recommendations_timer: f32,
     pub artifacts: Vec<ArtifactConfig>,
     pub artifact_statuses: HashMap<String, ArtifactStatus>,
@@ -40,6 +44,10 @@ impl Default for State {
             last_tick: Instant::now(),
             show_recommendations: false,
             show_create_menu: false,
+            show_create_modal: false,
+            create_form_title: String::new(),
+            create_form_description: String::new(),
+            create_form_folder: None,
             recommendations_timer: 0.0,
             artifacts: Vec::new(),
             artifact_statuses: HashMap::new(),
@@ -60,5 +68,11 @@ impl State {
     pub fn clear_input(&mut self) {
         self.input_text.clear();
         self.save_persistent();
+    }
+
+    pub fn reset_create_form(&mut self) {
+        self.create_form_title.clear();
+        self.create_form_description.clear();
+        self.create_form_folder = None;
     }
 }

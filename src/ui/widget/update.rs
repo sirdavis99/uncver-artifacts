@@ -30,7 +30,77 @@ impl SearchWidget {
                 self.state.show_create_menu = !self.state.show_create_menu;
                 Task::none()
             }
-            Message::CreateArtifact => self.handle_create_artifact(),
+            Message::OpenCreateModal => {
+                self.state.show_create_menu = false;
+                self.state.show_create_modal = true;
+                self.state.reset_create_form();
+                Task::none()
+            }
+            Message::CloseCreateModal => {
+                self.state.show_create_modal = false;
+                Task::none()
+            }
+            Message::CreateTitleChanged(val) => {
+                self.state.create_form_title = val;
+                Task::none()
+            }
+            Message::CreateDescriptionChanged(val) => {
+                self.state.create_form_description = val;
+                Task::none()
+            }
+            Message::SelectCreateFolder => {
+                Task::perform(
+                    async {
+                        tokio::task::spawn_blocking(|| {
+                            rfd::FileDialog::new().pick_folder()
+                        }).await.unwrap_or(None)
+                    },
+                    Message::FolderSelected
+                )
+            }
+            Message::FolderSelected(path) => {
+                if let Some(p) = path {
+                    self.state.create_form_folder = Some(p);
+                }
+                Task::none()
+            }
+            Message::SubmitCreateArtifact => {
+                if self.state.create_form_title.is_empty() {
+                    return Task::none();
+                }
+                
+                let title = self.state.create_form_title.clone();
+                let desc = self.state.create_form_description.clone();
+                let folder = self.state.create_form_folder.clone();
+                
+                let manager = self.artifacts.clone();
+                self.state.show_create_modal = false;
+                self.state.reset_create_form();
+                
+                Task::perform(
+                    async move {
+                        let config = ArtifactConfig {
+                            name: title.clone(),
+                            description: Some(desc),
+                            url: None,
+                            local_path: folder.map(|p| p.to_string_lossy().to_string()),
+                            container_image: Some("ghcr.io/podman/hello:latest".to_string()),
+                        };
+                        if manager.create_artifact(&config).is_ok() {
+                            Some(title)
+                        } else {
+                            None
+                        }
+                    },
+                    |res| {
+                        if let Some(name) = res {
+                            Message::ArtifactCreated(name)
+                        } else {
+                            Message::None
+                        }
+                    }
+                )
+            }
             Message::ArtifactCreated(name) => {
                 info!("Artifact {} created!", name);
                 self.handle_refresh_artifacts()
@@ -88,35 +158,7 @@ impl SearchWidget {
         )
     }
 
-    fn handle_create_artifact(&mut self) -> Task<Message> {
-        self.state.show_create_menu = false;
-        let manager = self.artifacts.clone();
-        Task::perform(
-            async move {
-                if let Some(path) = FileDialog::new().pick_folder() {
-                    let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                    let config = ArtifactConfig {
-                        name: name.clone(),
-                        description: Some("Newly created artifact".to_string()),
-                        url: None,
-                        local_path: Some(path.to_string_lossy().to_string()),
-                        container_image: Some("ghcr.io/podman/hello:latest".to_string()),
-                    };
-                    if manager.create_artifact(&config).is_ok() {
-                        return Some(name);
-                    }
-                }
-                None
-            },
-            |res| {
-                if let Some(name) = res {
-                    Message::ArtifactCreated(name)
-                } else {
-                    Message::None
-                }
-            }
-        )
-    }
+
 
     fn handle_open_artifact(&mut self, name: String) -> Task<Message> {
         let status = self.state.artifact_statuses.get(&name).cloned().unwrap_or(ArtifactStatus::Idle);
