@@ -4,7 +4,7 @@ use uncver_artifacts::SearchWidget;
 use iced::time::Duration;
 use iced::window::settings::PlatformSpecific;
 use iced::window::{Position, Settings as WindowSettings};
-use iced::{application, window, Color, Element, Size, Task};
+use iced::{window, Color, Element, Size, Task};
 
 fn main() -> iced::Result {
     tracing_subscriber::fmt()

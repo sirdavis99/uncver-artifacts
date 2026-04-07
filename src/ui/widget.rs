@@ -139,46 +139,51 @@ impl SearchWidget {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let p = self.state.animation_progress.progress; // 0.0 (circle) → 1.0 (pill)
+        let p = self.state.animation_progress.progress; // 0.0 (home state) → 1.0 (searching state)
         
         // ── Dimensions ───────────────────────────────────────────
-        let pill_w = COLLAPSED_SIZE + (EXPANDED_WIDTH - COLLAPSED_SIZE) * p;
-        let pill_h = COLLAPSED_SIZE;
-        let radius = 24.0; // Stadium ends (always a circular cap)
+        // The user wants it to ALWAYS be a pill, so we use a fixed width.
+        let pill_w = EXPANDED_WIDTH; 
+        let pill_h = EXPANDED_HEIGHT;
+        let radius = 24.0; // Stadium ends for a 48px height pill
 
         // ── Dynamic Shadow ───────────────────────────────────────
-        let (blur, alpha) = if p < 0.1 { (8.0, 0.12) } else { (20.0, 0.18) };
         let pill_shadow = iced::Shadow {
-            color: Color::from_rgba(0.0, 0.0, 0.0, alpha),
+            color: Color::from_rgba(0.0, 0.0, 0.0, 0.18),
             offset: iced::Vector::new(0.0, 4.0),
-            blur_radius: blur,
+            blur_radius: 20.0,
         };
 
         // ── Search Icon Button ───────────────────────────────────
         let svg_handle = svg::Handle::from_memory(SEARCH_SVG.as_bytes().to_vec());
-        let icon_btn = button(svg(svg_handle).width(24).height(24))
-            .on_press(Message::IconClick)
-            .padding(0)
-            .style(|_theme: &Theme, _status: button::Status| button::Style {
-                background: None,
-                ..Default::default()
-            });
-
-        // ── Content ──────────────────────────────────────────────
-        let inner: Element<'_, Message> = if p < 0.05 {
-            // FULLY COLLAPSED: Only centered icon
-            container(icon_btn)
-                .width(Length::Fill)
-                .height(Length::Fill)
+        let icon_btn = button(
+            container(svg(svg_handle).width(24).height(24))
+                .width(Length::Fixed(40.0))
+                .height(Length::Fixed(40.0))
                 .center_x(Length::Fill)
                 .center_y(Length::Fill)
-                .into()
-        } else {
-            // EXPANDING/EXPANDED: Icon + Input group centered
-            let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
-            
+        )
+        .on_press(Message::IconClick)
+        .padding(0)
+        .style(|_theme: &Theme, _status: button::Status| button::Style {
+            background: None,
+            ..Default::default()
+        });
+
+        // ── Content ──────────────────────────────────────────────
+        // The content group (Icon + Input + Clear) should be centered as a whole.
+        // Within this group, things are left-aligned.
+        
+        let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
+        
+        let mut items: Vec<Element<Message>> = vec![
+            icon_btn.into(),
+        ];
+
+        // Only show input and space if we are not fully collapsed (but even if p > 0, it fades in)
+        if p > 0.05 {
             let input_field = text_input(
-                if p > 0.8 { "Search artifacts..." } else { "" }, 
+                "Search artifacts...", 
                 &self.state.input_text
             )
             .on_input(|s| {
@@ -200,49 +205,44 @@ impl SearchWidget {
                 border: iced::Border { radius: 0.0.into(), width: 0.0, color: Color::TRANSPARENT },
                 icon: Color::from_rgba(0.0, 0.0, 0.0, input_alpha),
                 placeholder: Color::from_rgba(0.55, 0.55, 0.55, input_alpha),
-                value: Color::from_rgba(0.0, 0.0, 0.0, input_alpha),
+                value: Color::from_rgba(0.3, 0.3, 0.3, input_alpha),
                 selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
             });
 
-            let clear_button = if !self.state.input_text.is_empty() {
-                Some(
-                    button(text("✕").size(14).font(Font::DEFAULT))
-                        .on_press(Message::Clear)
-                        .width(28)
-                        .height(28)
-                        .padding(0)
-                        .style(move |_theme, _| button::Style {
-                            background: Some(Color::from_rgba(0.86, 0.86, 0.86, input_alpha).into()),
-                            border: iced::Border { radius: 14.0.into(), ..Default::default() },
-                            ..Default::default()
-                        }),
-                )
-            } else {
-                None
-            };
-
-            let mut items: Vec<Element<Message>> = vec![
-                icon_btn.into(),
-                Space::new().width(10.0).into(),
-                input_field.into(),
-            ];
+            items.push(Space::new().width(10.0).into());
+            items.push(input_field.into());
             
-            if let Some(btn) = clear_button {
+            if !self.state.input_text.is_empty() {
+                let clear_button = button(text("✕").size(14).font(Font::DEFAULT))
+                    .on_press(Message::Clear)
+                    .width(28)
+                    .height(28)
+                    .padding(0)
+                    .style(move |_theme, _| button::Style {
+                        background: Some(Color::from_rgba(0.86, 0.86, 0.86, input_alpha).into()),
+                        border: iced::Border { radius: 14.0.into(), ..Default::default() },
+                        ..Default::default()
+                    });
+                
                 items.push(Space::new().width(8.0).into());
-                items.push(btn.into());
+                items.push(clear_button.into());
             }
+        }
 
-            container(
-                row(items)
-                    .spacing(0)
-                    .align_y(Alignment::Center)
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
+        // Wrap the row in a container that fulfills the "CENTERED" requirement for the group.
+        let content_container = container(
+            row(items)
+                .spacing(0)
+                .align_y(Alignment::Center)
+        )
+        .width(Length::Fill)
+        .height(Length::Fill);
+
+        // If collapsed (p=0), center the content so the icon is in the middle of the pill.
+        // If expanded (p=1), the items row will naturally be centered as a whole if we use center_x.
+        let inner = content_container
             .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .into()
-        };
+            .center_y(Length::Fill);
 
         // ── Main Pill ────────────────────────────────────────────
         let pill = container(inner)
@@ -259,7 +259,7 @@ impl SearchWidget {
                 ..Default::default()
             });
 
-        // ── Outer Layout ─────────────────────────────────────────
+        // Outer container ensures the pill itself is centered in the window and the outer background is transparent.
         container(pill)
             .width(Length::Fill)
             .height(Length::Fill)
