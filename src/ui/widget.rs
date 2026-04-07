@@ -263,19 +263,21 @@ impl SearchWidget {
                 ..Default::default()
             });
 
-        // Ensure the outer container captures mouse events for hover
-        container(pill)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
-            .style(|_theme: &Theme| container::Style {
-                background: Some(Color::TRANSPARENT.into()),
-                ..Default::default()
-            })
-            .on_mouseenter(Message::Hover(true))
-            .on_mouseleave(Message::Hover(false))
-            .into()
+        // Use a mouse area to capture hover events for the inactive state toggling
+        iced::widget::mouse_area(
+            container(pill)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x(Length::Fill)
+                .center_y(Length::Fill)
+                .style(|_theme: &Theme| container::Style {
+                    background: Some(Color::TRANSPARENT.into()),
+                    ..Default::default()
+                })
+        )
+        .on_enter(Message::Hover(true))
+        .on_exit(Message::Hover(false))
+        .into()
     }
     
     pub fn get_position(&self, screen_width: f32, screen_height: f32) -> Position {
