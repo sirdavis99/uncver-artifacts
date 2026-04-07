@@ -46,8 +46,8 @@ fn main() -> iced::Result {
 
     iced::application(SearchWidget::new, update, view)
         .window(window_settings)
-        .style(|_widget| application::Style {
-            background: Color::TRANSPARENT.into(),
+        .style(|_widget: &SearchWidget, _theme: &iced::Theme| iced::theme::Style {
+            background_color: Color::TRANSPARENT,
             text_color: Color::BLACK,
         })
         .subscription(subscription)
