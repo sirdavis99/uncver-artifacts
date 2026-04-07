@@ -176,45 +176,48 @@ impl SearchWidget {
             ..Default::default()
         });
 
-        // ── Content ──────────────────────────────────────────────
-        let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
-        
-        let mut items: Vec<Element<Message>> = vec![
-            icon_btn.into(),
-        ];
+        let inner: Element<'_, Message> = if p < 0.1 {
+            // CIRCLE MODE: icon perfectly centered
+            container(icon_btn)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x(Length::Fill)
+                .center_y(Length::Fill)
+                .into()
+        } else {
+            // EXPANDED MODE: icon + input, fully left-aligned
+            let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
 
-        if p > 0.1 {
-            let input_field = text_input(
-                "Search artifacts...", 
-                &self.state.input_text
-            )
-            .on_input(|s| {
-                if s.len() < self.state.input_text.len() {
-                    Message::Backspace
-                } else if let Some(c) = s.chars().last() {
-                    Message::KeyPress(c)
-                } else {
-                    Message::Backspace
-                }
-            })
-            .padding(0)
-            .size(18) // Tighter font
-            .font(Font::DEFAULT)
-            .line_height(Pixels(24.0))
-            .width(Length::Fill) 
-            .style(move |_theme, _| text_input::Style {
-                background: Color::TRANSPARENT.into(),
-                border: iced::Border { radius: 0.0.into(), width: 0.0, color: Color::TRANSPARENT },
-                icon: Color::from_rgba(0.0, 0.0, 0.0, input_alpha),
-                placeholder: Color::from_rgba(0.55, 0.55, 0.55, input_alpha),
-                value: Color::from_rgba(0.2, 0.2, 0.2, input_alpha),
-                selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
-            });
+            let input_field = text_input("Search artifacts...", &self.state.input_text)
+                .on_input(|s| {
+                    if s.len() < self.state.input_text.len() {
+                        Message::Backspace
+                    } else if let Some(c) = s.chars().last() {
+                        Message::KeyPress(c)
+                    } else {
+                        Message::Backspace
+                    }
+                })
+                .padding(0)
+                .size(18)
+                .font(Font::DEFAULT)
+                .line_height(Pixels(24.0))
+                .width(Length::Fill)
+                .style(move |_theme, _| text_input::Style {
+                    background: Color::TRANSPARENT.into(),
+                    border: iced::Border { radius: 0.0.into(), width: 0.0, color: Color::TRANSPARENT },
+                    icon: Color::from_rgba(0.0, 0.0, 0.0, input_alpha),
+                    placeholder: Color::from_rgba(0.55, 0.55, 0.55, input_alpha),
+                    value: Color::from_rgba(0.2, 0.2, 0.2, input_alpha),
+                    selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
+                });
 
-            // Minimal spacing after icon
-            items.push(Space::new().width(1.0).into());
-            items.push(input_field.into());
-            
+            let mut row_items: Vec<Element<Message>> = vec![
+                icon_btn.into(),
+                Space::new().width(4.0).into(),
+                input_field.into(),
+            ];
+
             if !self.state.input_text.is_empty() {
                 let clear_button = button(text("✕").size(14).font(Font::DEFAULT))
                     .on_press(Message::Clear)
@@ -226,32 +229,24 @@ impl SearchWidget {
                         border: iced::Border { radius: 14.0.into(), ..Default::default() },
                         ..Default::default()
                     });
-                
-                items.push(Space::new().width(4.0).into());
-                items.push(clear_button.into());
+                row_items.push(Space::new().width(6.0).into());
+                row_items.push(clear_button.into());
             }
-            
-            items.push(Space::new().width(8.0).into());
-        }
 
-        // 8px when collapsed (centers 28px icon in 48px circle), 0px when expanded (flush left)
-        let left_pad = 8.0 * (1.0 - p);
-        
-        let inner = container(
-            row(items)
-                .spacing(0)
-                .align_y(Alignment::Center)
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(iced::Padding {
-            left: left_pad, 
-            top: 4.0, 
-            right: 8.0, 
-            bottom: 4.0,
-        })
-        .align_y(Alignment::Center)
-        .align_x(Alignment::Start);
+            // Right-side padding spacer so input doesn't touch pill edge
+            row_items.push(Space::new().width(12.0).into());
+
+            // Explicit left-aligned row — no centering, no align_x tricks
+            container(
+                row(row_items)
+                    .spacing(0)
+                    .align_y(Alignment::Center)
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(iced::Padding { left: 4.0, top: 4.0, right: 0.0, bottom: 4.0 })
+            .into()
+        };
 
         // ── Main Pill ────────────────────────────────────────────
         let pill = container(inner)
