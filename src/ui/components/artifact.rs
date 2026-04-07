@@ -45,26 +45,7 @@ pub fn artifact_item<'a>(
 ) -> Element<'a, Message> {
     let mut row_children = Vec::new();
 
-    // Loading spinner (left aligned)
-    if let Some(ArtifactStatus::Starting) = status {
-        row_children.push(
-            container(Space::new())
-                .width(16)
-                .height(16)
-                .style(move |_| {
-                    container::Style {
-                        border: Border {
-                            color: Color::from_rgb(0.2, 0.7, 0.2),
-                            width: 2.0,
-                            radius: 8.0.into(),
-                        },
-                        ..Default::default()
-                    }
-                })
-                .into(),
-        );
-    }
-
+    // 1. Left Section: Title and Description (fills available space)
     row_children.push(
         column![
             text(title.clone())
@@ -77,22 +58,46 @@ pub fn artifact_item<'a>(
         .into()
     );
 
-    if is_setup && (status.is_none() || matches!(status, Some(ArtifactStatus::Idle))) {
-        row_children.push(
-            container(text("Start").size(10).color(Color::WHITE))
-                .padding([2, 8])
-                .style(move |_| {
-                    container::Style {
-                        background: Some(Background::Color(Color::from_rgb(0.2, 0.7, 0.2))),
-                        border: Border {
-                            radius: 10.0.into(),
+    // 2. Right Section: Indicator (Spinner or Start Pill)
+    match status {
+        Some(ArtifactStatus::Starting) => {
+            // Loading spinner (aligned right)
+            row_children.push(
+                container(Space::new())
+                    .width(16)
+                    .height(16)
+                    .style(move |_| {
+                        container::Style {
+                            border: Border {
+                                color: Color::from_rgb(0.2, 0.7, 0.2),
+                                width: 2.0,
+                                radius: 8.0.into(),
+                            },
                             ..Default::default()
-                        },
-                        ..Default::default()
-                    }
-                })
-                .into(),
-        );
+                        }
+                    })
+                    .into(),
+            );
+        }
+        _ if is_setup && (status.is_none() || matches!(status, Some(ArtifactStatus::Idle))) => {
+            // Start pill (aligned right)
+            row_children.push(
+                container(text("Start").size(10).color(Color::from_rgba(1.0, 1.0, 1.0, alpha)))
+                    .padding([2, 8])
+                    .style(move |_| {
+                        container::Style {
+                            background: Some(Background::Color(Color::from_rgba(0.2, 0.7, 0.2, alpha))),
+                            border: Border {
+                                radius: 10.0.into(),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }
+                    })
+                    .into(),
+            );
+        }
+        _ => {}
     }
 
     let item_content = Row::with_children(row_children)
@@ -100,7 +105,7 @@ pub fn artifact_item<'a>(
         .spacing(10);
 
     button(item_content)
-        .padding(Padding { left: 16.0, right: 16.0, top: 8.0, bottom: 8.0 }) // Reduced top/bottom from 10 to 8
+        .padding(Padding { left: 16.0, right: 16.0, top: 4.0, bottom: 4.0 })
         .width(Length::Fill)
         .style(move |_theme, status| {
             let is_hovered = status == button::Status::Hovered;
@@ -111,7 +116,7 @@ pub fn artifact_item<'a>(
                     None
                 },
                 border: Border {
-                    radius: 12.0.into(),
+                    radius: 10.0.into(), // Slightly tighter radius for items
                     width: 0.0,
                     color: Color::TRANSPARENT,
                 },
@@ -130,7 +135,7 @@ pub fn artifact_card<'a>(
 ) -> Element<'a, Message> {
     container(
         content
-            .padding(Padding { top: 8.0, bottom: 4.0, left: 4.0, right: 4.0 }) // Reduced top from 12 to 8, bottom from 8 to 4
+            .padding(Padding { top: 6.0, bottom: 2.0, left: 4.0, right: 4.0 })
     )
     .width(Pixels(400.0))
     .style(move |_theme| container::Style {
@@ -141,7 +146,7 @@ pub fn artifact_card<'a>(
             color: Color::TRANSPARENT,
         },
         shadow: iced::Shadow {
-            color: Color::from_rgba(0.0, 0.0, 0.0, 0.1 * alpha),
+            color: Color::from_rgba(0.2, 0.8, 0.2, 0.3 * alpha),
             offset: Vector::new(0.0, 8.0),
             blur_radius: 16.0,
         },

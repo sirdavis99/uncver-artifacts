@@ -1,5 +1,5 @@
 use iced::widget::{button, container, row, TextInput, Space};
-use iced::{Alignment, Color, Element, Length, Font, font};
+use iced::{Alignment, Color, Element, Length, Font};
 use crate::ui::widget::Message;
 use super::icons::{SEARCH_SVG, CLEAR_SVG};
 
@@ -27,7 +27,7 @@ pub fn search_icon_button<'a>(is_active: bool, alpha: f32) -> Element<'a, Messag
                         width: 0.0,
                         color: Color::TRANSPARENT,
                     },
-                    text_color: Color::from_rgba(0.2, 0.2, 0.2, alpha), // Darker gray for active icon
+                    text_color: Color::from_rgba(0.2, 0.2, 0.2, alpha),
                     ..Default::default()
                 }
             })
@@ -78,24 +78,25 @@ pub fn search_bar<'a>(
 
     if width > 100.0 {
         bar_content = bar_content.push(
-            TextInput::new("Search artifacts...", input_text)
-                .on_input(Message::SearchChanged)
-                .size(20) // Increased from 16
-                .font(Font {
-                    weight: font::Weight::Semibold,
-                    ..Default::default()
-                })
-                .width(Length::Fill)
-                .style(move |_theme, _status| {
-                    iced::widget::text_input::Style {
-                        background: Color::TRANSPARENT.into(),
-                        placeholder: Color::from_rgba(0.5, 0.5, 0.5, alpha),
-                        value: Color::from_rgba(0.1, 0.1, 0.1, alpha),
-                        selection: Color::from_rgba(0.1, 0.1, 0.1, 0.2 * alpha),
-                        border: iced::Border::default(),
-                        icon: Color::TRANSPARENT,
-                    }
-                })
+            container(
+                TextInput::new("Search artifacts...", input_text)
+                    .on_input(Message::SearchChanged)
+                    .size(20)
+                    .width(Length::Fill)
+                    .font(Font::default()) // Use default system font
+                    .style(move |_theme, _status| {
+                        iced::widget::text_input::Style {
+                            background: Color::TRANSPARENT.into(),
+                            placeholder: Color::from_rgba(0.5, 0.5, 0.5, alpha),
+                            value: Color::from_rgba(0.1, 0.1, 0.1, alpha),
+                            selection: Color::from_rgba(0.1, 0.1, 0.1, 0.2 * alpha),
+                            border: iced::Border::default(),
+                            icon: Color::TRANSPARENT,
+                        }
+                    })
+            )
+            .height(48)
+            .center_y(48) // Explicitly center the text input vertically
         );
         
         if !input_text.is_empty() {
@@ -115,14 +116,14 @@ pub fn search_bar<'a>(
         .width(width)
         .height(48)
         .style(move |_theme: &iced::Theme| container::Style {
-            background: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.95 * alpha).into()), // Small transparency (0.95)
+            background: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.95 * alpha).into()),
             border: iced::Border {
                 radius: 24.0.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: iced::Shadow {
-                color: Color::from_rgba(0.2, 0.8, 0.2, 0.3 * alpha), // Active green shadow
+                color: Color::from_rgba(0.2, 0.8, 0.2, 0.3 * alpha),
                 offset: iced::Vector::new(0.0, 4.0),
                 blur_radius: 12.0,
             },
@@ -136,11 +137,11 @@ pub fn search_bar<'a>(
             let is_hovered = status == button::Status::Hovered;
             button::Style {
                 background: if is_active {
-                    None // Handled by container
+                    None
                 } else if is_hovered {
                     Some(Color::from_rgba(1.0, 1.0, 1.0, 1.0).into())
                 } else {
-                    Some(Color::from_rgba(1.0, 1.0, 1.0, 0.5).into()) // Initial slight transparency (0.5)
+                    Some(Color::from_rgba(1.0, 1.0, 1.0, 0.5).into())
                 },
                 border: iced::Border {
                     radius: 24.0.into(),
@@ -156,7 +157,7 @@ pub fn search_bar<'a>(
                 } else {
                     iced::Shadow::default()
                 },
-                text_color: Color::from_rgba(0.3, 0.3, 0.3, alpha), // Icon color
+                text_color: Color::from_rgba(0.3, 0.3, 0.3, alpha),
                 ..Default::default()
             }
         })

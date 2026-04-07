@@ -1,0 +1,64 @@
+use std::collections::HashMap;
+use std::time::Instant;
+use crate::artifacts::ArtifactConfig;
+
+pub mod mode;
+pub mod animation;
+pub mod trigger;
+pub mod status;
+pub mod persistent;
+
+pub use mode::WidgetMode;
+pub use animation::AnimationProgress;
+pub use trigger::Trigger;
+pub use status::ArtifactStatus;
+pub use persistent::PersistentState;
+
+pub struct State {
+    pub mode: WidgetMode,
+    pub input_text: String,
+    pub animation_progress: AnimationProgress,
+    pub trigger: Trigger,
+    pub last_tick: Instant,
+    pub show_recommendations: bool,
+    pub show_create_menu: bool,
+    pub recommendations_timer: f32,
+    pub artifacts: Vec<ArtifactConfig>,
+    pub artifact_statuses: HashMap<String, ArtifactStatus>,
+    pub is_loading: bool,
+    pub is_hovered: bool,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        let persistent = PersistentState::load();
+        Self {
+            mode: WidgetMode::Collapsed,
+            input_text: persistent.input_text,
+            animation_progress: AnimationProgress::default(),
+            trigger: Trigger::Manual,
+            last_tick: Instant::now(),
+            show_recommendations: false,
+            show_create_menu: false,
+            recommendations_timer: 0.0,
+            artifacts: Vec::new(),
+            artifact_statuses: HashMap::new(),
+            is_loading: false,
+            is_hovered: false,
+        }
+    }
+}
+
+impl State {
+    pub fn save_persistent(&self) {
+        let ps = PersistentState {
+            input_text: self.input_text.clone(),
+        };
+        ps.save();
+    }
+
+    pub fn clear_input(&mut self) {
+        self.input_text.clear();
+        self.save_persistent();
+    }
+}
