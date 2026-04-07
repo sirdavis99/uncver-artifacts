@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+Cargo.lock
+*.pdb
+.env
+.DS_Store
+*.log

@@ -1,0 +1,44 @@
+[package]
+name = "uncver-artifacts"
+version = "0.1.0"
+edition = "2021"
+description = "A minimal floating search widget with Podman integration"
+license = "MIT"
+authors = ["uncver"]
+repository = "https://github.com/uncver/uncver-artifacts"
+keywords = ["podman", "search", "launcher", "widget"]
+categories = ["gui", "application"]
+
+[[bin]]
+name = "uncver-artifacts"
+path = "src/main.rs"
+
+[lib]
+name = "uncver_artifacts"
+path = "src/lib.rs"
+
+[dependencies]
+iced = { version = "0.14", features = ["image", "svg", "tokio"] }
+winit = "0.29"
+tao = "0.27"
+
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+thiserror = "1.0"
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+dirs = "5.0"
+reqwest = { version = "0.12", features = ["blocking"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser"] }
+
+[build-dependencies]
