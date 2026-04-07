@@ -1,6 +1,6 @@
 use crate::ui::state::{Corner, Position, State, Trigger, WidgetMode};
 
-use iced::widget::{button, container, row, svg, text, text_input, Space};
+use iced::widget::{container, row, text, text_input, Space};
 use iced::{window, Alignment, Color, Element, Font, Length, Pixels, Task, Theme};
 
 pub const COLLAPSED_SIZE: f32 = 48.0;
@@ -10,9 +10,7 @@ pub const EXPANDED_HEIGHT: f32 = 48.0;
 /// Extra transparent padding on all sides so drop shadows are never clipped by the OS window.
 pub const WINDOW_PAD: f32 = 40.0;
 pub const WINDOW_W: f32 = EXPANDED_WIDTH + WINDOW_PAD * 2.0; // 460
-pub const WINDOW_H: f32 = EXPANDED_HEIGHT + WINDOW_PAD * 2.0; // 128
-
-const SEARCH_SVG: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>"#;
+pub const WINDOW_H: f32 = 300.0; // Increased to fit search results card
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -28,6 +26,7 @@ pub enum Message {
     UpdateLayout { width: f32, height: f32 },
     WindowEvent(window::Id, window::Event),
     Tick,
+    OpenArtifact(String),
 }
 
 pub struct SearchWidget {
@@ -111,6 +110,10 @@ impl SearchWidget {
                 self.layout_width = width;
                 self.layout_height = height;
             }
+            Message::OpenArtifact(title) => {
+                tracing::info!("Opening artifact: {}", title);
+                return Task::none();
+            }
             Message::WindowEvent(id, event) => {
                 if self.window_id.is_none() {
                     if let window::Event::Opened { .. } = event {
@@ -161,32 +164,38 @@ impl SearchWidget {
         };
 
         // ── Search Icon Button ───────────────────────────────────
-        let svg_handle = svg::Handle::from_memory(SEARCH_SVG.as_bytes().to_vec());
-        let icon_btn = button(
-            container(svg(svg_handle).width(24).height(24))
-                .width(Length::Fixed(28.0))
-                .height(Length::Fixed(28.0))
-                .center_x(Length::Fill)
-                .center_y(Length::Fill)
-        )
-        .on_press(Message::IconClick)
-        .padding(0)
-        .style(|_theme: &Theme, _status: button::Status| button::Style {
-            background: None,
-            ..Default::default()
-        });
+        let icon_btn = crate::ui::components::search_icon_button();
 
-        let inner: Element<'_, Message> = if p < 0.1 {
-            // CIRCLE MODE: icon perfectly centered
+        let pill: Element<'_, Message> = if p < 0.1 {
+            // CIRCLE MODE: icon perfectly centered inside a 48px circle
             container(icon_btn)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .center_x(Length::Fill)
-                .center_y(Length::Fill)
+                .width(Length::Fixed(COLLAPSED_SIZE))
+                .height(Length::Fixed(COLLAPSED_SIZE))
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .style(move |_theme: &Theme| container::Style {
+                    background: Some(Color::from_rgba(1.0, 1.0, 1.0, bg_alpha).into()),
+                    border: iced::Border {
+                        radius: iced::border::Radius::from(radius),
+                        width: 0.0,
+                        color: Color::TRANSPARENT,
+                    },
+                    shadow: pill_shadow,
+                    ..Default::default()
+                })
                 .into()
         } else {
-            // EXPANDED MODE: icon + input, fully left-aligned
+            // EXPANDED MODE: icon + input, fully left-aligned inside dynamic pill_w
             let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
+
+            // Dynamically calculate input field width to prevent row overflow
+            let shows_clear = !self.state.input_text.is_empty();
+            let mut input_w = pill_w - 4.0 - 8.0; // Subtract total padding
+            input_w -= 28.0 + 4.0; // Subtract search icon and initial gap
+            if shows_clear {
+                input_w -= 6.0 + 26.0; // Subtract clear button gap and button width
+            }
+            input_w = input_w.max(1.0);
 
             let input_field = text_input("Search artifacts...", &self.state.input_text)
                 .on_input(|s| {
@@ -212,64 +221,55 @@ impl SearchWidget {
                     selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
                 });
 
-            let mut row_items: Vec<Element<Message>> = vec![
-                icon_btn.into(),
-                Space::new().width(4.0).into(),
-                input_field.into(),
-            ];
+            let mut expanded_row = iced::widget::Row::new()
+                .push(Space::new().width(12.0))
+                .push(icon_btn)
+                .push(Space::new().width(10.0))
+                .push(input_field)
+                .spacing(0)
+                .align_y(Alignment::Center);
 
-            if !self.state.input_text.is_empty() {
-                let clear_button = button(text("✕").size(14).font(Font::DEFAULT))
-                    .on_press(Message::Clear)
-                    .width(28)
-                    .height(28)
-                    .padding(0)
-                    .style(move |_theme, _| button::Style {
-                        background: Some(Color::from_rgba(0.86, 0.86, 0.86, input_alpha).into()),
-                        border: iced::Border { radius: 14.0.into(), ..Default::default() },
-                        ..Default::default()
-                    });
-                row_items.push(Space::new().width(6.0).into());
-                row_items.push(clear_button.into());
+            if shows_clear {
+                expanded_row = expanded_row
+                    .push(crate::ui::components::clear_button(input_alpha))
+                    .push(Space::new().width(12.0));
+            } else {
+                expanded_row = expanded_row.push(Space::new().width(12.0));
             }
 
-            // Right-side padding spacer so input doesn't touch pill edge
-            row_items.push(Space::new().width(12.0).into());
-
-            // Explicit left-aligned row — no centering, no align_x tricks
-            container(
-                row(row_items)
-                    .spacing(0)
-                    .align_y(Alignment::Center)
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(iced::Padding { left: 4.0, top: 4.0, right: 0.0, bottom: 4.0 })
-            .into()
+            container(expanded_row)
+                .width(Length::Fixed(pill_w))
+                .height(Length::Fixed(pill_h))
+                .align_x(Alignment::Start)
+                .align_y(Alignment::Center)
+                .padding(iced::Padding { left: 4.0, top: 0.0, right: 8.0, bottom: 0.0 })
+                .style(move |_theme: &Theme| container::Style {
+                    background: Some(Color::from_rgba(1.0, 1.0, 1.0, bg_alpha).into()),
+                    border: iced::Border {
+                        radius: iced::border::Radius::from(radius),
+                        width: 0.0,
+                        color: Color::TRANSPARENT,
+                    },
+                    shadow: pill_shadow,
+                    ..Default::default()
+                })
+                .into()
         };
 
-        // ── Main Pill ────────────────────────────────────────────
-        let pill = container(inner)
-            .width(Length::Fixed(pill_w))
-            .height(Length::Fixed(pill_h))
-            .style(move |_theme: &Theme| container::Style {
-                background: Some(Color::from_rgba(1.0, 1.0, 1.0, bg_alpha).into()),
-                border: iced::Border {
-                    radius: iced::border::Radius::from(radius),
-                    width: 0.0,
-                    color: Color::TRANSPARENT,
-                },
-                shadow: pill_shadow,
-                ..Default::default()
-            });
+        // ── Main UI Assembly ──────────────────────────────────────
+        let content_col = iced::widget::Column::new()
+            .push(self.view_results_card(p))
+            .push(Space::new().height(12.0))
+            .push(pill)
+            .align_x(Alignment::Center);
 
-        // Use a mouse area to capture hover events for the inactive state toggling
         iced::widget::mouse_area(
-            container(pill)
+            container(content_col)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .center_x(Length::Fill)
-                .center_y(Length::Fill)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .padding(WINDOW_PAD)
                 .style(|_theme: &Theme| container::Style {
                     background: Some(Color::TRANSPARENT.into()),
                     ..Default::default()
@@ -278,6 +278,46 @@ impl SearchWidget {
         .on_enter(Message::Hover(true))
         .on_exit(Message::Hover(false))
         .into()
+    }
+
+    fn view_results_card(&self, p: f32) -> Element<'_, Message> {
+        let alpha = (p * 4.0 - 3.0).clamp(0.0, 1.0); // Fades in only at the very end of expansion
+        
+        if alpha <= 0.0 {
+            return Space::new().height(0.0).into();
+        }
+
+        let header = iced::widget::Row::new()
+            .push(text("RECOMMENDED ARTIFACTS")
+                .size(10)
+                .color(Color::from_rgba(0.5, 0.5, 0.5, alpha))
+            )
+            .padding(iced::Padding { left: 16.0, top: 12.0, right: 16.0, bottom: 4.0 });
+
+        let results_list = iced::widget::Column::new()
+            .push(header)
+            .push(crate::ui::components::result_item("Podman Desktop", "Local container management", alpha))
+            .push(crate::ui::components::result_item("Iced Documentation", "Cross-platform GUI library", alpha))
+            .push(Space::new().height(8.0))
+            .spacing(4.0);
+
+        container(results_list)
+            .width(Length::Fixed(EXPANDED_WIDTH))
+            .style(move |_theme| container::Style {
+                background: Some(Color::from_rgba(1.0, 1.0, 1.0, alpha).into()),
+                border: iced::Border {
+                    radius: 24.0.into(),
+                    width: 0.0,
+                    color: Color::TRANSPARENT,
+                },
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.15 * alpha),
+                    offset: iced::Vector::new(0.0, 4.0),
+                    blur_radius: 16.0,
+                },
+                ..Default::default()
+            })
+            .into()
     }
     
     pub fn get_position(&self, screen_width: f32, screen_height: f32) -> Position {
