@@ -142,7 +142,6 @@ impl SearchWidget {
         let p = self.state.animation_progress.progress; // 0.0 (circle) → 1.0 (pill)
         
         // ── Dimensions ───────────────────────────────────────────
-        // Widens from 48px circle to 380px pill
         let pill_w = COLLAPSED_SIZE + (EXPANDED_WIDTH - COLLAPSED_SIZE) * p;
         let pill_h = EXPANDED_HEIGHT;
         let radius = 24.0; // Stadium ends for a 48px height pill
@@ -171,10 +170,6 @@ impl SearchWidget {
         });
 
         // ── Content ──────────────────────────────────────────────
-        // Alignment: Left-aligned with minor padding to match circular cap.
-        // 4px padding + 40px button = 44px total. In a 48px pill, this leaves 4px on the other side.
-        // This is perfectly centered for the 48x48 circle case.
-        
         let input_alpha = (p * 2.0 - 0.5).clamp(0.0, 1.0);
         
         let mut items: Vec<Element<Message>> = vec![
@@ -196,10 +191,10 @@ impl SearchWidget {
                 }
             })
             .padding(0)
-            .size(20) // Slightly smaller for better fit
+            .size(20)
             .font(Font::DEFAULT)
             .line_height(Pixels(30.0))
-            .width(Length::Fixed(240.0))
+            .width(Length::Fill) // GROW to match
             .style(move |_theme, _| text_input::Style {
                 background: Color::TRANSPARENT.into(),
                 border: iced::Border { radius: 0.0.into(), width: 0.0, color: Color::TRANSPARENT },
@@ -209,7 +204,8 @@ impl SearchWidget {
                 selection: Color::from_rgba(0.78, 0.85, 1.0, input_alpha),
             });
 
-            items.push(Space::new().width(8.0).into());
+            // Reduced spacing between icon and input
+            items.push(Space::new().width(4.0).into());
             items.push(input_field.into());
             
             if !self.state.input_text.is_empty() {
@@ -227,11 +223,12 @@ impl SearchWidget {
                 items.push(Space::new().width(8.0).into());
                 items.push(clear_button.into());
             }
+            
+            // Add some padding at the end of the input area if it fills
+            items.push(Space::new().width(8.0).into());
         }
 
-        // Inner layout: Always Left-aligned (Start) with 4px padding.
-        // Because of the 48px circle and 40px icon, 4px padding naturally centers the icon at p=0.
-        // As width expands to 380px, it stays left-aligned.
+        // Reduced vertical and horizontal padding
         let inner = container(
             row(items)
                 .spacing(0)
@@ -239,7 +236,7 @@ impl SearchWidget {
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .padding(4.0)
+        .padding(4.0) // 4px padding + 40px icon = 44px. Centered in 48px.
         .align_y(Alignment::Center)
         .align_x(Alignment::Start);
 
