@@ -122,7 +122,7 @@ pub fn artifact_item<'a>(
 
     button(
         container(item_content)
-            .padding(Padding { left: 16.0, right: 12.0, top: 8.0, bottom: 8.0 })
+            .padding(Padding { left: 16.0, right: 12.0, top: 12.0, bottom: 12.0 })
             .width(Length::Fill)
     )
     .width(Length::Fill)

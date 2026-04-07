@@ -31,6 +31,8 @@ pub enum Message {
     OpenEditModal(String),
     SubmitEditArtifact,
     SubmitUpdateArtifact,
+    ConfirmDeleteArtifact,
+    CancelDeleteArtifact,
     SubmitDeleteArtifact,
     ArtifactCreated(String),
     ArtifactUpdated(std::path::PathBuf),

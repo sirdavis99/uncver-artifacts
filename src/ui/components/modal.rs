@@ -1,8 +1,40 @@
-use iced::widget::{container, row, text};
+use iced::widget::{container, row, text, stack, Space};
 use iced::{Background, Color, Element, Length, Font, Alignment};
 use super::modal_button::close_icon_btn;
 use crate::ui::widget::Message;
 
+/// Full modal overlay including scrim and centered container.
+/// This decouples the modal rendering logic from the main application view.
+pub fn modal_overlay<'a>(
+    main_view: impl Into<Element<'a, Message>>,
+    modal: impl Into<Element<'a, Message>>,
+    alpha: f32,
+) -> Element<'a, Message> {
+    // Semi-transparent scrim for depth
+    let scrim = container(Space::new())
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(move |_| container::Style {
+            background: Some(Background::Color(
+                Color::from_rgba(0.0, 0.0, 0.0, 0.18 * alpha)
+            )),
+            ..Default::default()
+        });
+
+    let overlay = container(
+        container(modal.into())
+            .width(380)
+            .max_width(380)
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .center_x(Length::Fill)
+    .center_y(Length::Fill);
+
+    stack![main_view.into(), scrim, overlay].into()
+}
+
+/// The inner frame container for a modal.
 pub fn modal_frame<'a, Message: 'a>(content: impl Into<Element<'a, Message>>, alpha: f32) -> Element<'a, Message> {
     container(content.into())
         .width(Length::Fill)
@@ -22,13 +54,14 @@ pub fn modal_frame<'a, Message: 'a>(content: impl Into<Element<'a, Message>>, al
         .into()
 }
 
+/// A standardized header for all modals.
 pub fn modal_header<'a>(title: &'a str, alpha: f32) -> Element<'a, Message> {
     row![
         text(title)
-            .size(20)
+            .size(18)
             .font(Font {
                 family: iced::font::Family::SansSerif,
-                weight: iced::font::Weight::Semibold,
+                weight: iced::font::Weight::Bold,
                 ..iced::Font::DEFAULT
             })
             .color(Color::from_rgba(0.08, 0.08, 0.08, alpha))

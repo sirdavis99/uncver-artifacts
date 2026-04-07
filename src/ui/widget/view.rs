@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, text, Space, Column, stack};
+use iced::widget::{column, container, row, text, Column};
 use iced::{Alignment, Color, Element, Length, Pixels, Font};
 use crate::ui::components;
 use crate::ui::state::WidgetMode;
@@ -30,9 +30,13 @@ impl SearchWidget {
             row![
                 text(title)
                     .size(10)
-                    .font(Font::default()) // Ensuring system font
+                    .font(Font {
+                        family: iced::font::Family::SansSerif,
+                        weight: iced::font::Weight::Bold,
+                        ..iced::Font::DEFAULT
+                    })
                     .color(Color::from_rgba(0.5, 0.5, 0.5, alpha)),
-                Space::new().width(Length::Fill),
+                components::hspace(Length::Fill),
                 components::plus_icon_button(alpha),
             ]
             .align_y(Alignment::Center)
@@ -48,11 +52,11 @@ impl SearchWidget {
                 container(
                     text("No artifacts found")
                         .size(13)
-                        .font(Font::default()) // Ensuring system font
+                        .font(Font::default())
                         .color(Color::from_rgba(0.5, 0.5, 0.5, alpha))
                 )
                 .width(Length::Fill)
-                .height(Pixels(160.0)) // Better middle ground for "well visible"
+                .height(Pixels(160.0))
                 .center_x(Length::Fill)
                 .center_y(Length::Fill)
             );
@@ -74,6 +78,7 @@ impl SearchWidget {
             let recommended_artifacts = components::artifact_card(results_col, alpha);
             column![
                 recommended_artifacts,
+                components::vspace(10),
                 search_bar,
             ]
             .align_x(Alignment::Center)
@@ -90,12 +95,19 @@ impl SearchWidget {
             .align_y(Alignment::End)
             .padding(24);
 
-        if self.state.show_create_modal {
+        if self.state.show_create_modal || self.state.is_confirming_delete {
             let is_editing = self.state.selected_artifact.is_some() && !self.state.is_viewing;
             let is_viewing = self.state.is_viewing;
-
+            let is_confirming = self.state.is_confirming_delete;
             let is_loading = self.state.is_loading;
-            let modal: Element<'_, Message> = if is_viewing {
+
+            let modal: Element<'_, Message> = if is_confirming {
+                components::delete_confirmation_modal(
+                    &self.state.create_form_title,
+                    alpha,
+                    is_loading,
+                )
+            } else if is_viewing {
                 components::view_artifact_modal(
                     &self.state.create_form_title,
                     &self.state.create_form_description,
@@ -121,28 +133,7 @@ impl SearchWidget {
                 )
             };
 
-            // Semi-transparent scrim for depth
-            let scrim = container(Space::new())
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .style(move |_| container::Style {
-                    background: Some(iced::Background::Color(
-                        Color::from_rgba(0.0, 0.0, 0.0, 0.18 * alpha)
-                    )),
-                    ..Default::default()
-                });
-
-            let overlay = container(
-                container(modal)
-                    .width(380)
-                    .max_width(380)
-            )
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill);
-
-            stack![main_view, scrim, overlay].into()
+            components::modal::modal_overlay(main_view, modal, alpha)
         } else {
             main_view.into()
         }

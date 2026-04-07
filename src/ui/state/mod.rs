@@ -33,6 +33,7 @@ pub struct State {
     pub is_hovered: bool,
     pub selected_artifact: Option<String>,
     pub is_viewing: bool,
+    pub is_confirming_delete: bool,
 }
 
 impl Default for State {
@@ -57,6 +58,7 @@ impl Default for State {
             is_hovered: false,
             selected_artifact: None,
             is_viewing: false,
+            is_confirming_delete: false,
         }
     }
 }
@@ -80,5 +82,6 @@ impl State {
         self.create_form_folder = None;
         self.selected_artifact = None;
         self.is_viewing = false;
+        self.is_confirming_delete = false;
     }
 }

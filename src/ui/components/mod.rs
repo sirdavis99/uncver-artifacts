@@ -1,4 +1,6 @@
 pub mod icons;
+pub mod inputfield;
+pub mod folder_picker;
 pub mod search;
 pub mod artifact;
 pub mod menu;
@@ -8,6 +10,11 @@ pub mod modal_button;
 pub mod view_modal;
 pub mod edit_modal;
 pub mod create_modal;
+pub mod delete_modal;
+pub mod layout;
+
+pub use inputfield::{input_style, field_label, labeled_input};
+pub use folder_picker::folder_picker_row;
 
 pub use search::{search_bar, search_icon_button, clear_button};
 pub use artifact::{artifact_item, artifact_card, plus_icon_button};
@@ -18,3 +25,5 @@ pub use modal_button::{primary_btn, secondary_btn, blue_btn, danger_btn, ghost_b
 pub use view_modal::view_artifact_modal;
 pub use edit_modal::edit_artifact_modal;
 pub use create_modal::create_artifact_modal_view;
+pub use delete_modal::delete_confirmation_modal;
+pub use layout::{vspace, hspace};

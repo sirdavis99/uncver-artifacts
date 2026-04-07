@@ -154,6 +154,14 @@ impl SearchWidget {
                     Task::none()
                 }
             }
+            Message::ConfirmDeleteArtifact => {
+                self.state.is_confirming_delete = true;
+                Task::none()
+            }
+            Message::CancelDeleteArtifact => {
+                self.state.is_confirming_delete = false;
+                Task::none()
+            }
             Message::SubmitDeleteArtifact => {
                 if let Some(name) = self.state.selected_artifact.clone() {
                     let manager = self.artifacts.clone();

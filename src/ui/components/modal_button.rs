@@ -29,31 +29,29 @@ pub fn close_icon_btn<'a>(msg: Message, alpha: f32) -> Element<'a, Message> {
     .into()
 }
 
-/// Full-width primary button (green).
+/// Primary action button (green). Default width is Shrink to allow flexible overrides.
 pub fn primary_btn<'a>(label: &'a str, msg: Message, alpha: f32, is_loading: bool) -> Element<'a, Message> {
     if is_loading {
         return disabled_btn(format!("{}...", label), alpha);
     }
 
     button(
-        container(text(label).size(12).font(Font { weight: Weight::Semibold, ..Font::default() }))
-            .width(Length::Fill)
-            .center_x(Length::Fill)
+        container(text(label).size(13).font(Font { weight: Weight::Bold, ..Font::default() }))
+            .center_x(Length::Shrink)
     )
     .on_press(msg)
-    .width(Length::Fill)
-    .padding([8, 12])
+    .padding([10, 24])
     .style(move |_theme, status| button::Style {
         background: Some(Background::Color(match status {
-            button::Status::Hovered => Color::from_rgba(0.10, 0.62, 0.10, alpha),
+            button::Status::Hovered => Color::from_rgba(0.12, 0.65, 0.12, alpha),
             _ => Color::from_rgba(0.15, 0.70, 0.15, alpha),
         })),
-        border: iced::Border { radius: 8.0.into(), ..Default::default() },
+        border: iced::Border { radius: 10.0.into(), ..Default::default() },
         text_color: Color::WHITE,
         shadow: iced::Shadow {
-            color: Color::from_rgba(0.08, 0.45, 0.08, 0.3 * alpha),
-            offset: iced::Vector::new(0.0, 2.0),
-            blur_radius: 8.0,
+            color: Color::from_rgba(0.12, 0.55, 0.12, 0.28 * alpha),
+            offset: iced::Vector::new(0.0, 3.0),
+            blur_radius: 10.0,
         },
         ..Default::default()
     })
@@ -63,76 +61,77 @@ pub fn primary_btn<'a>(label: &'a str, msg: Message, alpha: f32, is_loading: boo
 /// Compact secondary button (light grey, bordered, shrink width).
 pub fn secondary_btn<'a>(label: &'a str, msg: Message, alpha: f32) -> Element<'a, Message> {
     button(
-        container(text(label).size(11).font(Font::default()))
+        container(text(label).size(12).font(Font { weight: Weight::Semibold, ..Font::default() }))
             .padding([0, 4])
     )
     .on_press(msg)
     .width(Length::Shrink)
-    .padding([6, 12])
+    .padding([8, 16])
     .style(move |_theme, status| button::Style {
         background: Some(Background::Color(match status {
-            button::Status::Hovered => Color::from_rgba(0.87, 0.87, 0.87, alpha),
-            _ => Color::from_rgba(0.93, 0.93, 0.93, alpha),
+            button::Status::Hovered => Color::from_rgba(0.90, 0.90, 0.90, alpha),
+            _ => Color::from_rgba(0.95, 0.95, 0.95, alpha),
         })),
         border: iced::Border {
-            radius: 6.0.into(),
+            radius: 8.0.into(),
             width: 1.0,
-            color: Color::from_rgba(0.78, 0.78, 0.78, alpha),
+            color: Color::from_rgba(0.8, 0.8, 0.8, alpha),
         },
-        text_color: Color::from_rgba(0.15, 0.15, 0.15, alpha),
+        text_color: Color::from_rgba(0.2, 0.2, 0.2, alpha),
         ..Default::default()
     })
     .into()
 }
 
-/// Full-width blue action button (for save/update).
+/// Action button (blue).
 pub fn blue_btn<'a>(label: &'a str, msg: Message, alpha: f32, is_loading: bool) -> Element<'a, Message> {
     if is_loading {
         return disabled_btn(format!("{}...", label), alpha);
     }
 
     button(
-        container(text(label).size(12).font(Font { weight: Weight::Semibold, ..Font::default() }))
-            .width(Length::Fill)
-            .center_x(Length::Fill)
+        container(text(label).size(13).font(Font { weight: Weight::Bold, ..Font::default() }))
+            .center_x(Length::Shrink)
     )
     .on_press(msg)
-    .width(Length::Fill)
-    .padding([8, 12])
+    .padding([10, 24])
     .style(move |_theme, status| button::Style {
         background: Some(Background::Color(match status {
-            button::Status::Hovered => Color::from_rgba(0.10, 0.50, 0.88, alpha),
+            button::Status::Hovered => Color::from_rgba(0.12, 0.52, 0.92, alpha),
             _ => Color::from_rgba(0.18, 0.58, 0.96, alpha),
         })),
-        border: iced::Border { radius: 8.0.into(), ..Default::default() },
+        border: iced::Border { radius: 10.0.into(), ..Default::default() },
         text_color: Color::WHITE,
         shadow: iced::Shadow {
-            color: Color::from_rgba(0.1, 0.38, 0.8, 0.28 * alpha),
-            offset: iced::Vector::new(0.0, 2.0),
-            blur_radius: 8.0,
+            color: Color::from_rgba(0.1, 0.42, 0.85, 0.28 * alpha),
+            offset: iced::Vector::new(0.0, 3.0),
+            blur_radius: 10.0,
         },
         ..Default::default()
     })
     .into()
 }
 
-/// Full-width destructive button (red).
+/// Destructive button (red).
 pub fn danger_btn<'a>(label: &'a str, msg: Message, alpha: f32) -> Element<'a, Message> {
     button(
-        container(text(label).size(12).font(Font::default()))
-            .width(Length::Fill)
-            .center_x(Length::Fill)
+        container(text(label).size(13).font(Font { weight: Weight::Bold, ..Font::default() }))
+            .center_x(Length::Shrink)
     )
     .on_press(msg)
-    .width(Length::Fill)
-    .padding([8, 12])
+    .padding([10, 24])
     .style(move |_theme, status| button::Style {
         background: Some(Background::Color(match status {
-            button::Status::Hovered => Color::from_rgba(0.70, 0.12, 0.12, alpha),
-            _ => Color::from_rgba(0.80, 0.18, 0.18, alpha),
+            button::Status::Hovered => Color::from_rgba(0.72, 0.15, 0.15, alpha),
+            _ => Color::from_rgba(0.82, 0.20, 0.20, alpha),
         })),
-        border: iced::Border { radius: 8.0.into(), ..Default::default() },
+        border: iced::Border { radius: 10.0.into(), ..Default::default() },
         text_color: Color::WHITE,
+        shadow: iced::Shadow {
+            color: Color::from_rgba(0.65, 0.12, 0.12, 0.25 * alpha),
+            offset: iced::Vector::new(0.0, 3.0),
+            blur_radius: 10.0,
+        },
         ..Default::default()
     })
     .into()
