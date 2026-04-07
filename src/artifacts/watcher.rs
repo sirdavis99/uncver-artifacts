@@ -30,7 +30,7 @@ fn build_stream() -> impl iced::futures::Stream<Item = PathBuf> {
     .expect("Failed to create watcher");
 
     watcher
-        .watch(&path, RecursiveMode::NonRecursive)
+        .watch(&path, RecursiveMode::Recursive)
         .expect("Failed to watch directory");
 
     // Return a stream that keeps the watcher alive

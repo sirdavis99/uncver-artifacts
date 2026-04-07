@@ -102,10 +102,10 @@ pub fn artifact_item<'a>(
 
     let item_content = Row::with_children(row_children)
         .align_y(Alignment::Center)
-        .spacing(10);
+        .spacing(6);
 
     button(item_content)
-        .padding(Padding { left: 16.0, right: 16.0, top: 4.0, bottom: 4.0 })
+        .padding(Padding { left: 16.0, right: 16.0, top: 2.0, bottom: 2.0 })
         .width(Length::Fill)
         .style(move |_theme, status| {
             let is_hovered = status == button::Status::Hovered;
@@ -135,9 +135,10 @@ pub fn artifact_card<'a>(
 ) -> Element<'a, Message> {
     container(
         content
-            .padding(Padding { top: 6.0, bottom: 2.0, left: 4.0, right: 4.0 })
+            .padding(Padding { top: 4.0, bottom: 1.0, left: 4.0, right: 4.0 })
     )
     .width(Pixels(400.0))
+    .height(Pixels(200.0)) // Ensure the card only takes as much height as its content
     .style(move |_theme| container::Style {
         background: Some(Color::from_rgba(1.0, 1.0, 1.0, alpha).into()),
         border: Border {

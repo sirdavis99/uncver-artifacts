@@ -1,5 +1,5 @@
 use iced::widget::{column, container, row, text, Space, Column};
-use iced::{Alignment, Color, Element, Length};
+use iced::{Alignment, Color, Element, Length, Pixels};
 use crate::ui::components;
 use crate::ui::state::WidgetMode;
 use crate::ui::widget::{SearchWidget, Message};
@@ -63,11 +63,11 @@ impl SearchWidget {
             results_col = results_col.push(
                 container(
                     text("No artifacts found")
-                        .size(10)
+                        .size(13)
                         .color(Color::from_rgba(0.5, 0.5, 0.5, alpha))
                 )
                 .width(Length::Fill)
-                .height(40)
+                .height(Pixels(160.0)) // Better middle ground for "well visible"
                 .center_x(Length::Fill)
                 .center_y(Length::Fill)
             );

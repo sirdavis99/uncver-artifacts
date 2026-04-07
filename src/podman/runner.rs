@@ -24,6 +24,21 @@ impl PodmanRunner {
         }
     }
 
+    pub fn build(&self, tag: &str, path: &str) -> anyhow::Result<()> {
+        tracing::info!("Building podman image: {} from path: {}", tag, path);
+
+        let status = Command::new("podman")
+            .args(&["build", "-t", tag, path])
+            .status()
+            .context("Failed to build podman image")?;
+
+        if !status.success() {
+            anyhow::bail!("Podman build failed for image: {}", tag);
+        }
+
+        Ok(())
+    }
+
     pub fn run_detached(&self, image: &str, name: Option<&str>) -> anyhow::Result<String> {
         tracing::info!("Running podman container detached: {}", image);
 

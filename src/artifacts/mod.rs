@@ -1,4 +1,5 @@
 pub mod watcher;
+pub mod builder;
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

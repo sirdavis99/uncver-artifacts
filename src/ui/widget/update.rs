@@ -37,7 +37,12 @@ impl SearchWidget {
             }
             Message::ArtifactUpdated(path) => {
                 info!("Artifact file updated: {:?}", path);
-                self.handle_refresh_artifacts()
+                Task::perform(
+                    async move {
+                        crate::artifacts::builder::build_from_config(path).await;
+                    },
+                    |_| Message::RefreshArtifacts
+                )
             }
             Message::OpenArtifact(name) => self.handle_open_artifact(name),
             Message::ArtifactStarted(name, id) => {
@@ -170,16 +175,19 @@ impl SearchWidget {
 
     fn handle_tick(&mut self) -> Task<Message> {
         if self.state.mode != WidgetMode::Collapsed {
-            self.state.animation_progress.progress = (self.state.animation_progress.progress + 0.05).min(1.0);
+            // Faster fade in (0.1 per tick instead of 0.05)
+            self.state.animation_progress.progress = (self.state.animation_progress.progress + 0.1).min(1.0);
             
             if self.state.animation_progress.progress >= 1.0 && !self.state.show_recommendations {
                 self.state.recommendations_timer += 1.0;
-                if self.state.recommendations_timer >= 100.0 {
+                // Faster show delay (20 ticks instead of 100)
+                if self.state.recommendations_timer >= 20.0 {
                     self.state.show_recommendations = true;
                 }
             }
         } else {
-            self.state.animation_progress.progress = (self.state.animation_progress.progress - 0.05).max(0.0);
+            // Faster fade out
+            self.state.animation_progress.progress = (self.state.animation_progress.progress - 0.1).max(0.0);
             self.state.show_recommendations = false;
             self.state.recommendations_timer = 0.0;
         }
