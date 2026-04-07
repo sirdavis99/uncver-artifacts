@@ -91,27 +91,58 @@ impl SearchWidget {
             .padding(24);
 
         if self.state.show_create_modal {
-            let is_editing = self.state.selected_artifact.is_some();
-            let modal = components::artifact_modal(
-                &self.state.create_form_title,
-                &self.state.create_form_description,
-                self.state.create_form_folder.as_deref(),
-                alpha,
-                is_editing,
-                self.state.is_viewing,
-            );
+            let is_editing = self.state.selected_artifact.is_some() && !self.state.is_viewing;
+            let is_viewing = self.state.is_viewing;
 
-            let overlay = container(modal)
+            let is_loading = self.state.is_loading;
+            let modal: Element<'_, Message> = if is_viewing {
+                components::view_artifact_modal(
+                    &self.state.create_form_title,
+                    &self.state.create_form_description,
+                    self.state.create_form_folder.as_deref(),
+                    alpha,
+                    is_loading,
+                )
+            } else if is_editing {
+                components::edit_artifact_modal(
+                    &self.state.create_form_title,
+                    &self.state.create_form_description,
+                    self.state.create_form_folder.as_deref(),
+                    alpha,
+                    is_loading,
+                )
+            } else {
+                components::create_artifact_modal_view(
+                    &self.state.create_form_title,
+                    &self.state.create_form_description,
+                    self.state.create_form_folder.as_deref(),
+                    alpha,
+                    is_loading,
+                )
+            };
+
+            // Semi-transparent scrim for depth
+            let scrim = container(Space::new())
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .center_x(Length::Fill)
-                .center_y(Length::Fill)
-                .style(move |_theme| container::Style {
-                    background: Some(iced::Background::Color(Color::TRANSPARENT)),
+                .style(move |_| container::Style {
+                    background: Some(iced::Background::Color(
+                        Color::from_rgba(0.0, 0.0, 0.0, 0.18 * alpha)
+                    )),
                     ..Default::default()
                 });
 
-            stack![main_view, overlay].into()
+            let overlay = container(
+                container(modal)
+                    .width(380)
+                    .max_width(380)
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill);
+
+            stack![main_view, scrim, overlay].into()
         } else {
             main_view.into()
         }

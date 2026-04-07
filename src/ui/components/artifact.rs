@@ -1,5 +1,5 @@
 use iced::widget::{button, column, container, svg, text, Row, Space};
-use iced::{Alignment, Color, Element, Length, Pixels, Padding, Background, Border, Vector, Font, font::Weight};
+use iced::{Alignment, Color, Element, Length, Pixels, Padding, Background, Border, Vector, Font};
 use crate::ui::state::ArtifactStatus;
 use crate::ui::widget::Message;
 use super::icons::PLUS_SVG;
@@ -50,7 +50,11 @@ pub fn artifact_item<'a>(
         column![
             text(title.clone())
                 .size(13)
-                .font(Font { weight: Weight::Bold, ..Font::default() })
+                .font(Font {
+                    family: iced::font::Family::SansSerif,
+                    weight: iced::font::Weight::Semibold,
+                    ..iced::Font::DEFAULT
+                })
                 .color(Color::from_rgba(0.1, 0.1, 0.1, alpha)),
             text(subtitle)
                 .size(11)
