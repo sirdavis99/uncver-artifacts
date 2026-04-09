@@ -110,6 +110,26 @@ uncver-artifacts run
 uncver-artifacts watch
 ```
 
+## Upgrading
+
+### Check for Updates
+
+```bash
+# Check if a new version is available
+uncver-artifacts upgrade
+
+# Force reinstall even if on latest version
+uncver-artifacts upgrade --force
+```
+
+The upgrade command will:
+1. Check GitHub releases for the latest version
+2. Compare with your current version
+3. Download the appropriate binary for your platform (macOS Intel/ARM, Linux x86_64)
+4. Backup your current binary
+5. Replace with the new version
+6. Clean up backup on success
+
 ## Verifying Installation
 
 ```bash
