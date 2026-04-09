@@ -1,41 +1,50 @@
-use iced::futures::StreamExt;
-use iced::Subscription;
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
+use std::sync::mpsc::{channel, Receiver};
 
-pub fn watch_artifacts() -> Subscription<PathBuf> {
-    Subscription::run(build_stream)
+pub struct ArtifactWatcher {
+    _watcher: RecommendedWatcher,
+    receiver: Receiver<PathBuf>,
 }
 
-fn build_stream() -> impl iced::futures::Stream<Item = PathBuf> {
-    let (tx, rx) = iced::futures::channel::mpsc::channel(100);
+impl ArtifactWatcher {
+    pub fn new() -> anyhow::Result<Self> {
+        let (tx, receiver) = channel();
 
-    let mut path = dirs::data_dir().expect("No data dir found");
-    path.push("uncver-artifacts");
-    path.push("artifacts");
+        let mut path = dirs::data_dir().ok_or_else(|| anyhow::anyhow!("No data dir found"))?;
+        path.push("uncver-artifacts");
+        path.push("artifacts");
 
-    let mut watcher = RecommendedWatcher::new(
-        move |res: notify::Result<Event>| {
-            if let Ok(event) = res {
-                for path in event.paths {
-                    if path.extension().map_or(false, |ext| ext == "json") {
-                        let mut tx_clone = tx.clone();
-                        let _ = tx_clone.try_send(path);
+        let _watcher = RecommendedWatcher::new(
+            move |res: notify::Result<Event>| {
+                if let Ok(event) = res {
+                    for path in event.paths {
+                        if path.extension().map_or(false, |ext| ext == "json") {
+                            let _ = tx.send(path);
+                        }
                     }
                 }
-            }
-        },
-        notify::Config::default(),
-    )
-    .expect("Failed to create watcher");
+            },
+            notify::Config::default(),
+        )?;
 
-    watcher
-        .watch(&path, RecursiveMode::Recursive)
-        .expect("Failed to watch directory");
+        Ok(Self { _watcher, receiver })
+    }
 
-    // Return a stream that keeps the watcher alive
-    rx.map(move |p| {
-        let _ = &watcher;
-        p
-    })
+    pub fn watch(&mut self) -> anyhow::Result<()> {
+        let mut path = dirs::data_dir().ok_or_else(|| anyhow::anyhow!("No data dir found"))?;
+        path.push("uncver-artifacts");
+        path.push("artifacts");
+
+        self._watcher.watch(&path, RecursiveMode::Recursive)?;
+        Ok(())
+    }
+
+    pub fn recv(&self) -> Result<PathBuf, std::sync::mpsc::RecvError> {
+        self.receiver.recv()
+    }
+
+    pub fn try_recv(&self) -> Result<PathBuf, std::sync::mpsc::TryRecvError> {
+        self.receiver.try_recv()
+    }
 }

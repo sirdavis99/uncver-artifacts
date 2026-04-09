@@ -1,74 +1,180 @@
-use uncver_artifacts::ui::widget::{Message, WINDOW_H, WINDOW_W};
-use uncver_artifacts::SearchWidget;
+use clap::{Parser, Subcommand};
+use std::sync::Arc;
+use tracing::{info, error};
 
-use iced::time::Duration;
-use iced::window::settings::PlatformSpecific;
-use iced::window::{Position, Settings as WindowSettings};
-use iced::{window, Color, Element, Size, Task};
+use uncver_artifacts::{Podman, ArtifactManager, ArtifactConfig};
 
-fn main() -> iced::Result {
+#[derive(Parser)]
+#[command(name = "uncver-artifacts")]
+#[command(about = "CLI tool for managing uncver artifacts with Podman integration")]
+#[command(version = "0.1.0")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Install and setup required dependencies (Podman)
+    Install,
+    /// List all artifacts
+    List,
+    /// Start an artifact by name
+    Start {
+        /// Name of the artifact to start
+        name: String,
+    },
+    /// Create a new artifact
+    Create {
+        /// Name of the artifact
+        #[arg(short, long)]
+        name: String,
+        /// Description of the artifact
+        #[arg(short, long)]
+        description: Option<String>,
+        /// URL for the artifact repository
+        #[arg(short, long)]
+        url: Option<String>,
+        /// Local path to the artifact code
+        #[arg(short, long)]
+        local_path: Option<String>,
+        /// Container image to use
+        #[arg(short, long)]
+        container_image: Option<String>,
+    },
+    /// Delete an artifact
+    Delete {
+        /// Name of the artifact to delete
+        name: String,
+    },
+    /// Watch artifacts directory for changes
+    Watch,
+    /// Run the default artifacts
+    Run,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Initialize tracing
     tracing_subscriber::fmt()
         .with_env_filter("uncver_artifacts=debug,info")
         .init();
 
-    tracing::info!("Starting uncver-artifacts...");
+    info!("Starting uncver-artifacts CLI...");
 
-    let platform_specific = PlatformSpecific {
-        title_hidden: true,
-        titlebar_transparent: true,
-        fullsize_content_view: true,
-    };
+    let cli = Cli::parse();
+    let podman = Podman::new();
+    let artifacts = Arc::new(ArtifactManager::new()?);
 
-    // Window has extra padding around the widget so shadows are never clipped.
-    // Visible widget area expands/contracts, but window is static.
-    let window_settings = WindowSettings {
-        size: Size::new(WINDOW_W, WINDOW_H),
-        min_size: Some(Size::new(WINDOW_W, WINDOW_H)),
-        max_size: Some(Size::new(WINDOW_W, WINDOW_H)),
-        position: Position::SpecificWith(|_window_size: Size, monitor_size: Size| {
-            // Center horizontally, position near bottom
-            let x = (monitor_size.width - WINDOW_W) / 2.0;
-            let y = monitor_size.height - WINDOW_H - 100.0; // Slightly higher up for better focus
-            tracing::info!(
-                "Window position: x={}, y={}, screen: {:?}",
-                x,
-                y,
-                monitor_size
-            );
-            iced::Point::new(x, y)
-        }),
-        resizable: false,
-        decorations: false,
-        transparent: true,
-        platform_specific,
-        ..Default::default()
-    };
+    match cli.command {
+        Commands::Install => {
+            info!("Installing dependencies...");
+            podman.ensure_installed()?;
+            podman.ensure_machine_running()?;
+            info!("Installation complete!");
+        }
+        Commands::List => {
+            let list = artifacts.list_artifacts().await?;
+            if list.is_empty() {
+                println!("No artifacts found.");
+            } else {
+                println!("Artifacts:");
+                for artifact in list {
+                    println!("  - {}: {}", 
+                        artifact.name,
+                        artifact.description.as_deref().unwrap_or("No description")
+                    );
+                }
+            }
+        }
+        Commands::Start { name } => {
+            info!("Starting artifact: {}", name);
+            let list = artifacts.list_artifacts().await?;
+            if let Some(artifact) = list.iter().find(|a| a.name == name) {
+                if let Some(ref image) = artifact.container_image {
+                    podman.ensure_installed()?;
+                    podman.ensure_machine_running()?;
+                    match podman.run(image) {
+                        Ok(output) => println!("Artifact started:\n{}", output),
+                        Err(e) => error!("Failed to start artifact: {}", e),
+                    }
+                } else {
+                    error!("Artifact '{}' has no container image specified", name);
+                }
+            } else {
+                error!("Artifact '{}' not found", name);
+            }
+        }
+        Commands::Create { name, description, url, local_path, container_image } => {
+            let config = ArtifactConfig {
+                name,
+                description,
+                url,
+                local_path,
+                container_image,
+            };
+            let path = artifacts.create_artifact(&config)?;
+            info!("Created artifact at: {:?}", path);
+        }
+        Commands::Delete { name } => {
+            artifacts.delete_artifact(&name)?;
+            info!("Deleted artifact: {}", name);
+        }
+        Commands::Watch => {
+            info!("Watching artifacts directory for changes...");
+            info!("Press Ctrl+C to stop");
+            
+            use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
+            use std::path::PathBuf;
+            
+            let (tx, rx) = std::sync::mpsc::channel();
+            
+            let mut path = dirs::data_dir().expect("No data dir found");
+            path.push("uncver-artifacts");
+            path.push("artifacts");
+            
+            let mut watcher = RecommendedWatcher::new(
+                move |res: notify::Result<Event>| {
+                    if let Ok(event) = res {
+                        for path in event.paths {
+                            if path.extension().map_or(false, |ext| ext == "json") {
+                                let _ = tx.send(path);
+                            }
+                        }
+                    }
+                },
+                notify::Config::default(),
+            )?;
+            
+            watcher.watch(&path, RecursiveMode::Recursive)?;
+            
+            loop {
+                match rx.recv() {
+                    Ok(path) => info!("Artifact updated: {:?}", path),
+                    Err(e) => {
+                        error!("Watch error: {}", e);
+                        break;
+                    }
+                }
+            }
+        }
+        Commands::Run => {
+            info!("Running default artifacts...");
+            podman.ensure_installed()?;
+            podman.ensure_machine_running()?;
+            
+            let list = artifacts.list_artifacts().await?;
+            for artifact in list {
+                if let Some(ref image) = artifact.container_image {
+                    info!("Starting artifact: {}", artifact.name);
+                    match podman.run(image) {
+                        Ok(output) => println!("{} started:\n{}", artifact.name, output),
+                        Err(e) => error!("Failed to start {}: {}", artifact.name, e),
+                    }
+                }
+            }
+        }
+    }
 
-    iced::application(SearchWidget::new, update, view)
-        .window(window_settings)
-        .style(|_widget: &SearchWidget, _theme: &iced::Theme| iced::theme::Style {
-            background_color: Color::TRANSPARENT,
-            text_color: Color::BLACK,
-        })
-        .subscription(subscription)
-        .run()
-}
-
-fn subscription(_widget: &SearchWidget) -> iced::Subscription<Message> {
-    let tick = iced::time::every(Duration::from_millis(16)).map(Message::Tick);
-
-    let events = window::events().map(|(id, event)| Message::WindowEvent(id, event));
-
-    let watcher = uncver_artifacts::artifacts::watcher::watch_artifacts()
-        .map(Message::ArtifactUpdated);
-
-    iced::Subscription::batch([tick, events, watcher])
-}
-
-fn update(widget: &mut SearchWidget, message: Message) -> Task<Message> {
-    widget.update(message)
-}
-
-fn view(widget: &SearchWidget) -> Element<'_, Message> {
-    widget.view()
+    Ok(())
 }
