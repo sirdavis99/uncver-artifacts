@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 use std::sync::Arc;
-use tracing::{info, error};
+use tracing::{error, info};
 
-use uncver_artifacts::{Podman, ArtifactManager, ArtifactConfig};
+use uncver_artifacts::{ArtifactConfig, ArtifactManager, Podman};
 
 mod upgrade;
 
@@ -88,7 +88,8 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 println!("Artifacts:");
                 for artifact in list {
-                    println!("  - {}: {}", 
+                    println!(
+                        "  - {}: {}",
                         artifact.name,
                         artifact.description.as_deref().unwrap_or("No description")
                     );
@@ -113,7 +114,13 @@ async fn main() -> anyhow::Result<()> {
                 error!("Artifact '{}' not found", name);
             }
         }
-        Commands::Create { name, description, url, local_path, container_image } => {
+        Commands::Create {
+            name,
+            description,
+            url,
+            local_path,
+            container_image,
+        } => {
             let config = ArtifactConfig {
                 name,
                 description,
@@ -131,20 +138,20 @@ async fn main() -> anyhow::Result<()> {
         Commands::Watch => {
             info!("Watching artifacts directory for changes...");
             info!("Press Ctrl+C to stop");
-            
+
             use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 
             let (tx, rx) = std::sync::mpsc::channel();
-            
+
             let mut path = dirs::data_dir().expect("No data dir found");
             path.push("uncver-artifacts");
             path.push("artifacts");
-            
+
             let mut watcher = RecommendedWatcher::new(
                 move |res: notify::Result<Event>| {
                     if let Ok(event) = res {
                         for path in event.paths {
-                            if path.extension().map_or(false, |ext| ext == "json") {
+                            if path.extension().is_some_and(|ext| ext == "json") {
                                 let _ = tx.send(path);
                             }
                         }
@@ -152,9 +159,9 @@ async fn main() -> anyhow::Result<()> {
                 },
                 notify::Config::default(),
             )?;
-            
+
             watcher.watch(&path, RecursiveMode::Recursive)?;
-            
+
             loop {
                 match rx.recv() {
                     Ok(path) => info!("Artifact updated: {:?}", path),
@@ -169,7 +176,7 @@ async fn main() -> anyhow::Result<()> {
             info!("Running default artifacts...");
             podman.ensure_installed()?;
             podman.ensure_machine_running()?;
-            
+
             let list = artifacts.list_artifacts().await?;
             for artifact in list {
                 if let Some(ref image) = artifact.container_image {

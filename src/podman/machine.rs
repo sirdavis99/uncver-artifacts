@@ -10,7 +10,7 @@ impl PodmanMachine {
 
     pub fn is_running(&self) -> anyhow::Result<bool> {
         let output = Command::new("podman")
-            .args(&["machine", "list"])
+            .args(["machine", "list"])
             .output()
             .context("Failed to list podman machines")?;
 
@@ -33,13 +33,13 @@ impl PodmanMachine {
         tracing::info!("Starting Podman machine...");
 
         let status = Command::new("podman")
-            .args(&["machine", "start"])
+            .args(["machine", "start"])
             .status()
             .context("Failed to start podman machine")?;
 
         if !status.success() {
             let output = Command::new("podman")
-                .args(&["machine", "init"])
+                .args(["machine", "init"])
                 .output()
                 .context("Failed to init podman machine")?;
 
@@ -48,7 +48,7 @@ impl PodmanMachine {
             }
 
             let start_status = Command::new("podman")
-                .args(&["machine", "start"])
+                .args(["machine", "start"])
                 .status()
                 .context("Failed to start podman machine after init")?;
 
@@ -65,7 +65,7 @@ impl PodmanMachine {
         tracing::info!("Stopping Podman machine...");
 
         let status = Command::new("podman")
-            .args(&["machine", "stop"])
+            .args(["machine", "stop"])
             .status()
             .context("Failed to stop podman machine")?;
 
@@ -78,7 +78,7 @@ impl PodmanMachine {
 
     pub fn info(&self) -> anyhow::Result<Option<String>> {
         let output = Command::new("podman")
-            .args(&["machine", "list"])
+            .args(["machine", "list"])
             .output()
             .context("Failed to get podman machine list")?;
 
