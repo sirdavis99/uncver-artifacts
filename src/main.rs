@@ -4,6 +4,8 @@ use tracing::{info, error};
 
 use uncver_artifacts::{Podman, ArtifactManager, ArtifactConfig};
 
+mod upgrade;
+
 #[derive(Parser)]
 #[command(name = "uncver-artifacts")]
 #[command(about = "CLI tool for managing uncver artifacts with Podman integration")]
@@ -51,6 +53,12 @@ enum Commands {
     Watch,
     /// Run the default artifacts
     Run,
+    /// Upgrade uncver-artifacts to the latest version
+    Upgrade {
+        /// Force upgrade even if already on latest version
+        #[arg(short, long)]
+        force: bool,
+    },
 }
 
 #[tokio::main]
@@ -170,6 +178,16 @@ async fn main() -> anyhow::Result<()> {
                         Ok(output) => println!("{} started:\n{}", artifact.name, output),
                         Err(e) => error!("Failed to start {}: {}", artifact.name, e),
                     }
+                }
+            }
+        }
+        Commands::Upgrade { force } => {
+            info!("Checking for updates...");
+            match upgrade::check_and_upgrade(force).await {
+                Ok(msg) => println!("{}", msg),
+                Err(e) => {
+                    error!("Upgrade failed: {}", e);
+                    std::process::exit(1);
                 }
             }
         }
