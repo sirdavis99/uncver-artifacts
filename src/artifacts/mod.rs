@@ -1,10 +1,10 @@
-pub mod watcher;
 pub mod builder;
+pub mod watcher;
 
-use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-use std::fs;
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArtifactConfig {
@@ -25,12 +25,14 @@ impl ArtifactManager {
         let mut path = dirs::data_dir().ok_or_else(|| anyhow::anyhow!("No data dir found"))?;
         path.push("uncver-artifacts");
         path.push("artifacts");
-        
+
         if !path.exists() {
             fs::create_dir_all(&path)?;
         }
-        
-        Ok(Self { base_dir: path.to_path_buf() })
+
+        Ok(Self {
+            base_dir: path.to_path_buf(),
+        })
     }
 
     pub fn get_artifacts_dir(&self) -> &Path {
@@ -41,17 +43,17 @@ impl ArtifactManager {
         let folder_name = config.name.to_lowercase().replace(' ', "-");
         let mut artifact_path = self.base_dir.clone();
         artifact_path.push(&folder_name);
-        
+
         if !artifact_path.exists() {
             fs::create_dir_all(&artifact_path)?;
         }
-        
+
         let mut config_path = artifact_path.clone();
         config_path.push("artifact.json");
-        
+
         let json = serde_json::to_string_pretty(config)?;
         fs::write(config_path, json)?;
-        
+
         Ok(artifact_path)
     }
 
@@ -79,7 +81,7 @@ impl ArtifactManager {
         let folder_name = name.to_lowercase().replace(' ', "-");
         let mut artifact_path = self.base_dir.clone();
         artifact_path.push(&folder_name);
-        
+
         if artifact_path.exists() {
             fs::remove_dir_all(artifact_path).map_err(|e| anyhow::anyhow!(e))?;
         }

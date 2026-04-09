@@ -1,15 +1,14 @@
 //! Self-upgrade functionality for uncver-artifacts
-//! 
+//!
 //! Handles checking for new versions and upgrading the binary
 
 use anyhow::{Context, Result};
-use reqwest;
 use serde::Deserialize;
 use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
-use tracing::{info, debug};
+use std::path::{Path, PathBuf};
+use tracing::{debug, info};
 
 const GITHUB_REPO: &str = "sirdavis99/uncver-artifacts";
 const GITHUB_API_URL: &str = "https://api.github.com/repos";
@@ -30,6 +29,12 @@ pub struct GitHubAsset {
 
 pub struct UpgradeManager;
 
+impl Default for UpgradeManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UpgradeManager {
     pub fn new() -> Self {
         Self
@@ -43,9 +48,9 @@ impl UpgradeManager {
     /// Check for the latest version from GitHub releases
     pub async fn check_latest_version() -> Result<Option<GitHubRelease>> {
         let url = format!("{}/{}/releases/latest", GITHUB_API_URL, GITHUB_REPO);
-        
+
         debug!("Fetching latest release from: {}", url);
-        
+
         let client = reqwest::Client::new();
         let response = client
             .get(&url)
@@ -71,7 +76,7 @@ impl UpgradeManager {
         // Remove 'v' prefix if present
         let current = current.trim_start_matches('v');
         let latest = latest.trim_start_matches('v');
-        
+
         // Simple version comparison (assumes semver)
         current != latest
     }
@@ -79,23 +84,24 @@ impl UpgradeManager {
     /// Get the appropriate asset for the current platform
     pub fn get_platform_asset(release: &GitHubRelease) -> Option<&GitHubAsset> {
         let target = Self::get_target_triple();
-        
-        release.assets.iter().find(|asset| {
-            asset.name.contains(&target)
-        })
+
+        release
+            .assets
+            .iter()
+            .find(|asset| asset.name.contains(&target))
     }
 
     fn get_target_triple() -> String {
         // Determine target triple based on platform
         #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
         return "x86_64-apple-darwin".to_string();
-        
+
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         return "aarch64-apple-darwin".to_string();
-        
+
         #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
         return "x86_64-unknown-linux-gnu".to_string();
-        
+
         #[cfg(not(any(
             all(target_os = "macos", target_arch = "x86_64"),
             all(target_os = "macos", target_arch = "aarch64"),
@@ -107,7 +113,7 @@ impl UpgradeManager {
     /// Download and install the latest version
     pub async fn upgrade_to_version(&self, asset: &GitHubAsset) -> Result<PathBuf> {
         info!("Downloading {}...", asset.name);
-        
+
         let client = reqwest::Client::new();
         let response = client
             .get(&asset.browser_download_url)
@@ -120,80 +126,96 @@ impl UpgradeManager {
         }
 
         let bytes = response.bytes().await.context("Failed to read download")?;
-        
+
         // Create temp directory for extraction
         let temp_dir = tempfile::tempdir().context("Failed to create temp directory")?;
         let archive_path = temp_dir.path().join(&asset.name);
-        
+
         fs::write(&archive_path, bytes).context("Failed to write archive")?;
-        
+
         // Extract the binary
         let extracted_binary = Self::extract_binary(&archive_path, temp_dir.path())?;
-        
+
         // Get current binary path
         let current_exe = env::current_exe().context("Failed to get current executable path")?;
-        
+
         // Backup current binary
         let backup_path = current_exe.with_extension("backup");
         fs::copy(&current_exe, &backup_path).context("Failed to backup current binary")?;
-        
+
         // Replace current binary
         fs::copy(&extracted_binary, &current_exe).context("Failed to replace binary")?;
-        
+
         // Make executable
         let mut perms = fs::metadata(&current_exe)?.permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&current_exe, perms).context("Failed to set permissions")?;
-        
+
         // Clean up backup on success
         let _ = fs::remove_file(&backup_path);
-        
+
         info!("Upgrade complete!");
         Ok(current_exe)
     }
 
-    fn extract_binary(archive_path: &PathBuf, extract_dir: &std::path::Path) -> Result<PathBuf> {
+    fn extract_binary(archive_path: &Path, extract_dir: &std::path::Path) -> Result<PathBuf> {
         let extension = archive_path.extension().and_then(|e| e.to_str());
-        
+
         match extension {
             Some("gz") | Some("tgz") => {
                 // tar.gz archive
                 let output = std::process::Command::new("tar")
-                    .args(["-xzf", archive_path.to_str().unwrap(), "-C", extract_dir.to_str().unwrap()])
+                    .args([
+                        "-xzf",
+                        archive_path.to_str().unwrap(),
+                        "-C",
+                        extract_dir.to_str().unwrap(),
+                    ])
                     .output()
                     .context("Failed to extract archive")?;
-                
+
                 if !output.status.success() {
-                    anyhow::bail!("Extraction failed: {}", String::from_utf8_lossy(&output.stderr));
+                    anyhow::bail!(
+                        "Extraction failed: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                 }
             }
             Some("zip") => {
                 // Zip archive
                 let output = std::process::Command::new("unzip")
-                    .args(["-o", archive_path.to_str().unwrap(), "-d", extract_dir.to_str().unwrap()])
+                    .args([
+                        "-o",
+                        archive_path.to_str().unwrap(),
+                        "-d",
+                        extract_dir.to_str().unwrap(),
+                    ])
                     .output()
                     .context("Failed to extract archive")?;
-                
+
                 if !output.status.success() {
-                    anyhow::bail!("Extraction failed: {}", String::from_utf8_lossy(&output.stderr));
+                    anyhow::bail!(
+                        "Extraction failed: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                 }
             }
             _ => {
                 // Assume it's the binary itself
-                return Ok(archive_path.clone());
+                return Ok(archive_path.to_path_buf());
             }
         }
-        
+
         // Find the binary in extracted contents
         let binary_name = "uncver-artifacts";
         for entry in fs::read_dir(extract_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.file_stem().map_or(false, |s| s == binary_name) {
+            if path.file_stem().is_some_and(|s| s == binary_name) {
                 return Ok(path);
             }
         }
-        
+
         anyhow::bail!("Binary not found in archive")
     }
 }
@@ -202,27 +224,27 @@ impl UpgradeManager {
 pub async fn check_and_upgrade(force: bool) -> Result<String> {
     let manager = UpgradeManager::new();
     let current_version = UpgradeManager::current_version();
-    
+
     println!("Current version: {}", current_version);
     println!("Checking for updates...");
-    
+
     let release = match UpgradeManager::check_latest_version().await? {
         Some(r) => r,
         None => return Ok("No releases found".to_string()),
     };
-    
+
     let latest_version = release.tag_name.clone();
     println!("Latest version: {}", latest_version);
-    
+
     let needs_upgrade = force || UpgradeManager::needs_upgrade(&current_version, &latest_version);
-    
+
     if !needs_upgrade {
         return Ok(format!(
             "Already on the latest version ({}). Use --force to reinstall.",
             current_version
         ));
     }
-    
+
     // Find appropriate asset
     let asset = match UpgradeManager::get_platform_asset(&release) {
         Some(a) => a,
@@ -237,17 +259,17 @@ pub async fn check_and_upgrade(force: bool) -> Result<String> {
             ));
         }
     };
-    
+
     println!("Found update: {}", release.name);
     if let Some(body) = &release.body {
         println!("\nRelease notes:\n{}", body);
     }
-    
+
     println!("\nDownloading from: {}", asset.browser_download_url);
-    
+
     // Perform upgrade
     let new_binary = manager.upgrade_to_version(asset).await?;
-    
+
     Ok(format!(
         "✓ Successfully upgraded to {}\n\
          Binary location: {}",

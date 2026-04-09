@@ -19,7 +19,7 @@ impl ArtifactWatcher {
             move |res: notify::Result<Event>| {
                 if let Ok(event) = res {
                     for path in event.paths {
-                        if path.extension().map_or(false, |ext| ext == "json") {
+                        if path.extension().is_some_and(|ext| ext == "json") {
                             let _ = tx.send(path);
                         }
                     }

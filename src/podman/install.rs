@@ -57,7 +57,7 @@ impl PodmanInstaller {
     #[cfg(target_os = "macos")]
     fn install_macos(&self) -> anyhow::Result<()> {
         let has_brew = Command::new("brew")
-            .args(&["info", "podman"])
+            .args(["info", "podman"])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false);
@@ -65,7 +65,7 @@ impl PodmanInstaller {
         if has_brew {
             tracing::info!("Installing Podman via Homebrew...");
             let status = Command::new("brew")
-                .args(&["install", "podman"])
+                .args(["install", "podman"])
                 .status()
                 .context("Failed to run brew install")?;
 
@@ -82,6 +82,7 @@ impl PodmanInstaller {
     }
 
     #[cfg(target_os = "macos")]
+    #[allow(non_snake_case)]
     fn install_podman_macOS_download(&self) -> anyhow::Result<()> {
         use std::path::PathBuf;
 
@@ -106,7 +107,7 @@ impl PodmanInstaller {
         tracing::info!("Installing Podman from {}", pkg_path.display());
 
         let status = Command::new("sudo")
-            .args(&[
+            .args([
                 "installer",
                 "-pkg",
                 pkg_path.to_str().unwrap(),
@@ -132,12 +133,12 @@ impl PodmanInstaller {
         if os_release.contains("ID=ubuntu") || os_release.contains("ID=debian") {
             tracing::info!("Installing Podman via apt...");
             Command::new("sudo")
-                .args(&["apt-get", "update"])
+                .args(["apt-get", "update"])
                 .status()
                 .context("Failed to apt-get update")?;
 
             Command::new("sudo")
-                .args(&["apt-get", "install", "-y", "podman"])
+                .args(["apt-get", "install", "-y", "podman"])
                 .status()
                 .context("Failed to apt-get install podman")?;
         } else if os_release.contains("ID=fedora")
@@ -146,7 +147,7 @@ impl PodmanInstaller {
         {
             tracing::info!("Installing Podman via dnf...");
             Command::new("sudo")
-                .args(&["dnf", "install", "-y", "podman"])
+                .args(["dnf", "install", "-y", "podman"])
                 .status()
                 .context("Failed to dnf install podman")?;
         } else {
@@ -160,7 +161,7 @@ impl PodmanInstaller {
     #[cfg(target_os = "windows")]
     fn install_windows(&self) -> anyhow::Result<()> {
         let has_winget = Command::new("winget")
-            .args(&["list", "Podman"])
+            .args(["list", "Podman"])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false);
@@ -168,7 +169,7 @@ impl PodmanInstaller {
         if has_winget {
             tracing::info!("Installing Podman via winget...");
             let status = Command::new("winget")
-                .args(&[
+                .args([
                     "install",
                     "--id",
                     "RedHat.Podman",
@@ -188,6 +189,7 @@ impl PodmanInstaller {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn install_via_script(&self) -> anyhow::Result<()> {
         let script_url = "https://get.podman.io";
 
@@ -208,14 +210,14 @@ impl PodmanInstaller {
 
     fn init_machine(&self) -> anyhow::Result<()> {
         let output = Command::new("podman")
-            .args(&["machine", "list"])
+            .args(["machine", "list"])
             .output()
             .context("Failed to list podman machines")?;
 
         if !String::from_utf8_lossy(&output.stdout).contains("podman-machine-default") {
             tracing::info!("Initializing Podman machine...");
             let status = Command::new("podman")
-                .args(&["machine", "init"])
+                .args(["machine", "init"])
                 .status()
                 .context("Failed to podman machine init")?;
 

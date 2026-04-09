@@ -12,7 +12,7 @@ impl PodmanRunner {
         tracing::info!("Running podman container: {}", image);
 
         let output = Command::new("podman")
-            .args(&["run", "--rm", image])
+            .args(["run", "--rm", image])
             .output()
             .context("Failed to run podman container")?;
 
@@ -28,7 +28,7 @@ impl PodmanRunner {
         tracing::info!("Building podman image: {} from path: {}", tag, path);
 
         let status = Command::new("podman")
-            .args(&["build", "-t", tag, path])
+            .args(["build", "-t", tag, path])
             .status()
             .context("Failed to build podman image")?;
 
@@ -66,7 +66,7 @@ impl PodmanRunner {
 
     pub fn list_containers(&self) -> anyhow::Result<Vec<ContainerInfo>> {
         let output = Command::new("podman")
-            .args(&["ps", "--format", "json"])
+            .args(["ps", "--format", "json"])
             .output()
             .context("Failed to list podman containers")?;
 
@@ -100,7 +100,7 @@ impl PodmanRunner {
         tracing::info!("Pulling podman image: {}", image);
 
         let status = Command::new("podman")
-            .args(&["pull", image])
+            .args(["pull", image])
             .status()
             .context("Failed to pull podman image")?;
 
