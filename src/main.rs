@@ -125,8 +125,7 @@ async fn main() -> anyhow::Result<()> {
             info!("Press Ctrl+C to stop");
             
             use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
-            use std::path::PathBuf;
-            
+
             let (tx, rx) = std::sync::mpsc::channel();
             
             let mut path = dirs::data_dir().expect("No data dir found");
