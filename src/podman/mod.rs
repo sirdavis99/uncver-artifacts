@@ -69,7 +69,7 @@ impl Podman {
         }
         Ok(())
     }
-
+ 
     pub fn run(&self, image: &str) -> Result<String> {
         self.inner.runner.run(image)
     }
