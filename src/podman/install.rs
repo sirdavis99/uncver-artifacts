@@ -18,9 +18,9 @@ impl PodmanInstaller {
 
     pub fn version(&self) -> anyhow::Result<Option<String>> {
         match Command::new("podman").arg("--version").output() {
-            Ok(output) if output.status.success() => {
-                Ok(Some(String::from_utf8_lossy(&output.stdout).trim().to_string()))
-            }
+            Ok(output) if output.status.success() => Ok(Some(
+                String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            )),
             Ok(_) => Ok(None),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(e).context("Failed to get podman version"),
@@ -100,7 +100,7 @@ impl PodmanInstaller {
 
             let mut file = std::fs::File::create(&pkg_path_clone)?;
             std::io::copy(&mut response, &mut file)?;
-            
+
             Ok(())
         })
         .join()

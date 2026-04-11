@@ -61,6 +61,11 @@ enum Commands {
     },
     /// Start the system tray indicator
     Tray,
+    /// Load and start an artifact from a local directory
+    Load {
+        /// Path to the directory containing artifact.json
+        path: String,
+    },
 }
 
 #[tokio::main]
@@ -202,6 +207,44 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Tray => {
             uncver_artifacts::tray::run_tray()?;
+        }
+        Commands::Load { path } => {
+            let target_path = std::path::PathBuf::from(&path);
+            let absolute_path = std::fs::canonicalize(&target_path)
+                .map_err(|e| anyhow::anyhow!("Invalid path or directory not found: {}", e))?;
+
+            let json_path = absolute_path.join("artifact.json");
+            if !json_path.exists() {
+                anyhow::bail!("No artifact.json found in {:?}", absolute_path);
+            }
+
+            info!("Loading artifact config from {:?}", json_path);
+            let content = std::fs::read_to_string(&json_path)?;
+            let mut config: ArtifactConfig = serde_json::from_str(&content)
+                .map_err(|e| anyhow::anyhow!("Invalid artifact.json format: {}", e))?;
+
+            // Replace the URL with the absolute path of the directory
+            config.url = Some(absolute_path.to_string_lossy().into_owned());
+
+            // Save to global managed directory
+            artifacts.create_artifact(&config)?;
+            info!("Artifact '{}' loaded and registered", config.name);
+
+            // Start it
+            if let Some(ref image) = config.container_image {
+                info!("Starting artifact: {}", config.name);
+                podman.ensure_installed()?;
+                podman.ensure_machine_running()?;
+                match podman.run(image) {
+                    Ok(output) => println!("{} started:\n{}", config.name, output),
+                    Err(e) => error!("Failed to start {}: {}", config.name, e),
+                }
+            } else {
+                error!(
+                    "Artifact '{}' has no container image specified",
+                    config.name
+                );
+            }
         }
     }
 
