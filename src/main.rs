@@ -1,8 +1,10 @@
 use clap::{Parser, Subcommand};
+use std::process::Command;
 use std::sync::Arc;
 use tracing::{error, info};
 
-use uncver_artifacts::{open_gui_window, ArtifactConfig, ArtifactManager, Podman};
+use uncver_artifacts::podman::{Podman, TraefikOrchestrator};
+use uncver_artifacts::{open_gui_window, ArtifactConfig, ArtifactManager};
 
 mod upgrade;
 
@@ -53,13 +55,22 @@ enum Commands {
     Watch,
     /// Run the default artifacts
     Run,
-    /// Upgrade uncver-artifacts to the latest version
+    /// Upgrade to the latest version
     Upgrade {
-        /// Force upgrade even if already on latest version
-        #[arg(short, long)]
+        /// Force upgrade even if version is up to date
+        #[arg(long)]
         force: bool,
     },
-    /// Start the system tray indicator
+    /// List all podman containers
+    Ps,
+    /// View logs for a specific container
+    Logs {
+        /// Name of the container
+        name: String,
+    },
+    /// Reset the environment (clears all uncver containers and restarts infrastructure)
+    Reset,
+    /// Start the tray application
     Tray,
     /// Load and start an artifact from a local directory
     Load {
@@ -248,10 +259,57 @@ async fn main() -> anyhow::Result<()> {
         Commands::Tray => {
             uncver_artifacts::tray::run_tray()?;
         }
+        Commands::Reset => {
+            info!("Resetting uncver environment...");
+            // 1. Kill everything with uncver- prefix
+            let output = Command::new("podman")
+                .args(["ps", "-a", "--format", "{{.Names}}"])
+                .output()?;
+            let names = String::from_utf8_lossy(&output.stdout);
+            for name in names.lines() {
+                if name.contains("uncver-") || name.contains("redis-stream-push-gui") {
+                    info!("Removing container: {}", name);
+                    let _ = Command::new("podman").args(["rm", "-f", name]).output();
+                }
+            }
+
+            // 2. Ensure Network
+            TraefikOrchestrator::ensure_network()?;
+
+            // 3. Restart Base Infrastructure (Traefik handled by ensure_traefik)
+            TraefikOrchestrator::ensure_traefik()?;
+
+            // 4. Start Redis on bridge
+            info!("Starting uncver-redis-stream on bridge...");
+            let _ = Command::new("podman")
+                .args([
+                    "run", "-d",
+                    "--name", "uncver-redis-stream",
+                    "--network", "uncver-network",
+                    "docker.io/library/redis:7-alpine"
+                ])
+                .output()?;
+            
+            info!("Reset complete! Traefik and Redis are running on 'uncver-network'.");
+        }
+        Commands::Ps => {
+            let containers = podman.list_containers()?;
+            println!("{:<30} {:<30} {:<20} {:<20}", "ID", "NAME", "IMAGE", "STATE");
+            for c in containers {
+                println!("{:<30} {:<30} {:<20} {:<20}", c.id, c.name, c.image, c.state);
+            }
+        }
+        Commands::Logs { name } => {
+            let logs = podman.get_logs(&name)?;
+            println!("{}", logs);
+        }
         Commands::Load { path } => {
             let target_path = std::path::PathBuf::from(&path);
             let absolute_path = std::fs::canonicalize(&target_path)
                 .map_err(|e| anyhow::anyhow!("Invalid path or directory not found: {}", e))?;
+
+            // Ensure Base infrastructure
+            TraefikOrchestrator::ensure_traefik()?;
 
             let json_path = absolute_path.join("artifact.json");
             if !json_path.exists() {
@@ -285,6 +343,10 @@ async fn main() -> anyhow::Result<()> {
             // Start it
             if let Some(ref image) = config.container_image {
                 info!("Starting artifact: {}", config.name);
+                
+                // Force wipe any existing container with this name to ensure network/port sync
+                let _ = Command::new("podman").args(["rm", "-f", &config.name]).output();
+                
                 podman.ensure_installed()?;
                 podman.ensure_machine_running()?;
                 match podman.run_detached(
@@ -295,6 +357,13 @@ async fn main() -> anyhow::Result<()> {
                 ) {
                     Ok(output) => {
                         println!("{} started in background with ID:\n{}", config.name, output);
+                        
+                        // Register route in Traefik
+                        let port = config.gui_window.as_ref().and_then(|g| g.port).unwrap_or(8080);
+                        if let Err(e) = TraefikOrchestrator::register_artifact_route(&config.name, port) {
+                            error!("Failed to register Traefik route: {}", e);
+                        }
+                        
                         open_gui_window(&config);
                     }
                     Err(e) => error!("Failed to start {}: {}", config.name, e),

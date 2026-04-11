@@ -13,26 +13,68 @@ impl TraefikOrchestrator {
         Ok(())
     }
 
+
+
     pub fn ensure_traefik() -> anyhow::Result<()> {
-        let output = Command::new("podman").args(["ps", "-a", "--format", "{{.Names}}"]).output()?;
+        let output = Command::new("podman").args(["ps", "-a", "--format", "{{.Image}} {{.Ports}} {{.Names}}"]).output()?;
         let containers = String::from_utf8_lossy(&output.stdout);
-        if !containers.lines().any(|c| c.trim() == "uncver-traefik") {
-            tracing::info!("Starting Traefik reverse proxy");
+        
+        // Ensure config directory exists
+        let config_dir = std::env::current_dir()?.join(".uncver").join("traefik");
+        std::fs::create_dir_all(&config_dir)?;
+
+        let needs_recreate = !containers.contains("uncver-traefik");
+
+        if needs_recreate {
+            tracing::info!("Initializing generic Traefik bridge on safe port 42080...");
             let _ = Command::new("podman").args(["rm", "-f", "uncver-traefik"]).output();
-            let _ = Command::new("podman").args([
+            
+            let output = Command::new("podman").args([
                 "run", "-d",
                 "--name", "uncver-traefik",
                 "--network", "uncver-network",
-                "-p", "42080:80",  // Safe isolated entrypoint mapping!
-                "-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
+                "-p", "42080:80",
+                "-v", &format!("{}:/etc/traefik/dynamic:ro,z", config_dir.display()),
                 "docker.io/library/traefik:v3.0",
                 "--api.insecure=true",
-                "--providers.docker=true",
-                "--providers.docker.exposedbydefault=false",
+                "--log.level=DEBUG",
+                "--providers.file.directory=/etc/traefik/dynamic",
+                "--providers.file.watch=true",
+                "--entrypoints.web.address=:80",
             ]).output()?;
+
+            if !output.status.success() {
+                let err = String::from_utf8_lossy(&output.stderr);
+                tracing::error!("Failed to start Traefik: {}", err);
+                return Err(anyhow::anyhow!("Traefik failed to start: {}", err));
+            }
         } else {
             let _ = Command::new("podman").args(["start", "uncver-traefik"]).output();
         }
+        Ok(())
+    }
+
+    pub fn register_artifact_route(name: &str, port: u16) -> anyhow::Result<()> {
+        let config_dir = std::env::current_dir()?.join(".uncver").join("traefik");
+        let safe_name = name.replace("uncver-", "");
+        
+        // Use HostRegexp to match the domain regardless of the port (e.g. :42080)
+        let config = format!(r#"
+http:
+  routers:
+    {0}-router:
+      rule: "HostRegexp(`{0}.localhost(:[0-9]+)?`)"
+      service: {0}-service
+  services:
+    {0}-service:
+      loadBalancer:
+        servers:
+          - url: "http://{1}:{2}"
+"#, safe_name, name, port);
+
+        let file_path = config_dir.join(format!("{}.yml", safe_name));
+        std::fs::write(file_path, config)?;
+        tracing::info!("Route registered for artifact: {}.localhost -> {}:{}", safe_name, name, port);
         Ok(())
     }
 

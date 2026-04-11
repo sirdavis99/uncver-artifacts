@@ -24,6 +24,9 @@ impl PodmanRunner {
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
             anyhow::bail!("Podman run failed: {}", stderr)
+        }
+    }
+
     pub fn build(&self, tag: &str, path: &str) -> anyhow::Result<()> {
         tracing::info!("Building podman image: {} from path: {}", tag, path);
 
@@ -66,18 +69,10 @@ impl PodmanRunner {
         args.push("--network");
         args.push("uncver-network");
 
-        // We completely ignore raw port bindings if Traefik handles it, but keep them for backwards comp if specified manually.
-        // Wait, the user specifically mentioned Traefik handles port mapping so we shouldn't bind ports to host directly!
-        // We will just expose them to the podman network.
-        // Or if we must, we can leave `-p` out. The user said: "traefik already knows how to run the port mapping"
-        // Let's add the Traefik labels!
-
-        if let Some(p_list) = ports {
-            for p in p_list {
-                args.push("-p");
-                args.push(p);
-            }
-        }
+        // We now rely on Traefik for all external traffic. We do NOT publish 
+        // ports to the host directly to avoid conflicts between different artifacts
+        // that might use the same internal port (like 8080).
+        // Traefik will route via the internal 'uncver-network' using container names.
 
         // Let's rebuild the dynamic arguments as Strings so we don't worry about lifetimes
         let mut string_args: Vec<String> = args.into_iter().map(|s| s.to_string()).collect();

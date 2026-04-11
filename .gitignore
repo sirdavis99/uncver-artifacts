@@ -5,3 +5,4 @@ Cargo.lock
 .env
 .DS_Store
 *.log
+.uncver/traefik/redis-stream-gui.yml
