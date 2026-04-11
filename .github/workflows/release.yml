@@ -27,20 +27,17 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-            echo "✅ Version (Dispatch): ${{ github.event.inputs.version }}"
           else
             TITLE="${{ github.event.pull_request.title }}"
             if [[ "$TITLE" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-              VERSION="v${BASH_REMATCH[1]}"
-              echo "version=$VERSION" >> $GITHUB_OUTPUT
-              echo "✅ Version (PR): $VERSION"
+              echo "version=v${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
             else
-              echo "❌ Could not extract version from title: $TITLE" && exit 1
+              echo "Could not extract version" && exit 1
             fi
           fi
 
   build-release:
-    name: Build & Release
+    name: Build & Package
     needs: resolve-version
     strategy:
       fail-fast: false
@@ -70,7 +67,7 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
       
-      - name: Package binary (Unix)
+      - name: Package binary (Unix Tarball)
         if: matrix.os != 'windows-latest'
         shell: bash
         run: |
@@ -78,24 +75,61 @@ jobs:
           tar czf ../../../uncver-artifacts-${{ matrix.target }}.tar.gz uncver-artifacts
           cd -
       
-      - name: Package binary (Windows)
+      - name: Package binary (Windows Zip)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           cd target/${{ matrix.target }}/release
           Compress-Archive -Path "uncver-artifacts.exe" -DestinationPath "../../../uncver-artifacts-${{ matrix.target }}.zip"
           cd -
-      
-      - name: Upload artifact
+
+      # ========================================================================
+      # EXTRA PACKAGING: .deb (Linux)
+      # ========================================================================
+      - name: Package .deb (Linux)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          cargo install cargo-deb
+          cargo deb --target ${{ matrix.target }} --no-build
+          mv target/${{ matrix.target }}/debian/*.deb uncver-artifacts-${{ matrix.target }}.deb
+
+      # ========================================================================
+      # EXTRA PACKAGING: .dmg (macOS)
+      # ========================================================================
+      - name: Package .dmg (macOS)
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          brew install create-dmg
+          mkdir -p dmg-root
+          cp target/${{ matrix.target }}/release/uncver-artifacts dmg-root/
+          create-dmg \
+            --volname "uncver-artifacts-${{ matrix.target }}" \
+            --window-pos 200 120 \
+            --window-size 600 300 \
+            --icon-size 100 \
+            --icon "uncver-artifacts" 175 120 \
+            --hide-extension "uncver-artifacts" \
+            "uncver-artifacts-${{ matrix.target }}.dmg" \
+            dmg-root/
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: uncver-artifacts-${{ matrix.target }}
-          path: uncver-artifacts-${{ matrix.target }}.${{ matrix.archive }}
+          path: |
+            uncver-artifacts-${{ matrix.target }}.tar.gz
+            uncver-artifacts-${{ matrix.target }}.zip
+            uncver-artifacts-${{ matrix.target }}.deb
+            uncver-artifacts-${{ matrix.target }}.dmg
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.resolve-version.outputs.version }}
-          files: uncver-artifacts-${{ matrix.target }}.${{ matrix.archive }}
+          files: |
+            uncver-artifacts-${{ matrix.target }}.tar.gz
+            uncver-artifacts-${{ matrix.target }}.zip
+            uncver-artifacts-${{ matrix.target }}.deb
+            uncver-artifacts-${{ matrix.target }}.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

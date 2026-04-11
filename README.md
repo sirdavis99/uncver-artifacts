@@ -27,6 +27,18 @@
 1. Download the latest `uncver-artifacts-x86_64-pc-windows-msvc.zip` from [Releases](https://github.com/sirdavis99/uncver-artifacts/releases).
 2. Extract the `uncver-artifacts.exe` and add its parent directory to your system `PATH`.
 
+### 🐧 Linux (.deb)
+
+For Debian/Ubuntu users:
+```bash
+curl -L -O https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-x86_64-unknown-linux-gnu.deb
+sudo dpkg -i uncver-artifacts-x86_64-unknown-linux-gnu.deb
+```
+
+### 🍏 macOS (.dmg)
+
+Download the `.dmg` file for your architecture ([Intel](https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-x86_64-apple-darwin.dmg) or [Silicon](https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-aarch64-apple-darwin.dmg)), open it, and drag the binary to your binary path.
+
 ### 🍎 macOS (Homebrew)
 
 ```bash
