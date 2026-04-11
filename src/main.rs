@@ -147,6 +147,11 @@ async fn main() -> anyhow::Result<()> {
                     ) {
                         Ok(output) => {
                             println!("Artifact started in background with ID:\n{}", output);
+                            
+                            // Register Traefik route
+                            let port = artifact.gui_window.as_ref().and_then(|g| g.port).unwrap_or(8080);
+                            let _ = TraefikOrchestrator::register_artifact_route(&artifact.name, port);
+                            
                             open_gui_window(artifact);
                         }
                         Err(e) => error!("Failed to start artifact: {}", e),
@@ -271,10 +276,17 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
-            // 2. Ensure Network
+            // 2. Clear stale Traefik routes from the global data dir
+            if let Ok(config_dir) = uncver_artifacts::paths::get_traefik_config_dir() {
+                info!("Clearing stale Traefik routes...");
+                let _ = std::fs::remove_dir_all(&config_dir);
+                let _ = std::fs::create_dir_all(&config_dir);
+            }
+
+            // 3. Ensure Network
             TraefikOrchestrator::ensure_network()?;
 
-            // 3. Restart Base Infrastructure (Traefik handled by ensure_traefik)
+            // 4. Restart Base Infrastructure
             TraefikOrchestrator::ensure_traefik()?;
 
             // 4. Start Redis on bridge

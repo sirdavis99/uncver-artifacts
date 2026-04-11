@@ -1,4 +1,6 @@
+use anyhow::Context;
 use std::process::Command;
+use tracing::info;
 use crate::paths::get_traefik_config_dir;
 
 pub struct TraefikOrchestrator;
@@ -59,7 +61,7 @@ impl TraefikOrchestrator {
 http:
   routers:
     {0}-router:
-      rule: "HostRegexp(`{0}.localhost(:[0-9]+)?`)"
+      rule: "Host(`{0}.localhost`) || Host(`{0}.localhost:42080`)"
       service: {0}-service
   services:
     {0}-service:
@@ -69,29 +71,22 @@ http:
 "#, safe_name, name, port);
 
         let file_path = config_dir.join(format!("{}.yml", safe_name));
-        std::fs::write(file_path, config)?;
-        tracing::info!("Route registered for artifact: {}.localhost -> {}:{}", safe_name, name, port);
+        std::fs::write(file_path, config).context("Failed to write Traefik route config")?;
+        
+        info!("Route registered for artifact: {}.localhost -> {}:{}", safe_name, name, port);
+        
+        // Force Traefik to restart/reload to ensure it picks up the new config
+        // (Bypasses possible watcher issues on macOS Podman mounts)
+        Self::ensure_traefik()?;
+        
         Ok(())
     }
 
-    pub fn inject_labels_and_env(string_args: &mut Vec<String>, name: &str, ports: Option<&Vec<String>>) {
+    pub fn inject_labels_and_env(string_args: &mut Vec<String>, name: &str, _ports: Option<&Vec<String>>) {
         let domain = format!("{}.localhost", name.replace("uncver-", ""));
         
-        string_args.push("-l".to_string());
-        string_args.push("traefik.enable=true".to_string());
-        string_args.push("-l".to_string());
-        string_args.push(format!("traefik.http.routers.{}.rule=Host(`{}`)", name, domain));
-
-        let mut target_port = "8080".to_string();
-        if let Some(p_list) = ports {
-            if let Some(p) = p_list.first() {
-                if let Some(internal) = p.split(':').last() {
-                    target_port = internal.to_string();
-                }
-            }
-        }
-        string_args.push("-l".to_string());
-        string_args.push(format!("traefik.http.services.{}.loadbalancer.server.port={}", name, target_port));
+        // We now rely on File-based configuration in TraefikOrchestrator::register_artifact_route
+        // which uses HostRegexp to handle ports correctly. Labels are removed to avoid conflicts.
 
         string_args.push("-e".to_string());
         string_args.push(format!("UNCVER_DOMAIN={}", domain));
