@@ -10,6 +10,9 @@ on:
         description: 'Version tag (v*.*.*)'
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   resolve-version:
     name: Resolve Version
@@ -116,20 +119,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: uncver-artifacts-${{ matrix.target }}
-          path: |
-            uncver-artifacts-${{ matrix.target }}.tar.gz
-            uncver-artifacts-${{ matrix.target }}.zip
-            uncver-artifacts-${{ matrix.target }}.deb
-            uncver-artifacts-${{ matrix.target }}.dmg
+          path: uncver-artifacts-${{ matrix.target }}.*
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.resolve-version.outputs.version }}
-          files: |
-            uncver-artifacts-${{ matrix.target }}.tar.gz
-            uncver-artifacts-${{ matrix.target }}.zip
-            uncver-artifacts-${{ matrix.target }}.deb
-            uncver-artifacts-${{ matrix.target }}.dmg
+          files: uncver-artifacts-${{ matrix.target }}.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

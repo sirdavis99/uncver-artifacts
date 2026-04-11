@@ -18,7 +18,7 @@ depends = "$auto, podman"
 section = "utils"
 priority = "optional"
 assets = [
-    ["target/x86_64-unknown-linux-gnu/release/uncver-artifacts", "/usr/bin/uncver-artifacts", "755"],
+    ["target/release/uncver-artifacts", "/usr/bin/uncver-artifacts", "755"],
     ["README.md", "/usr/share/doc/uncver-artifacts/README.md", "644"],
 ]
 
