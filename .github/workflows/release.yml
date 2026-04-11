@@ -29,15 +29,21 @@ jobs:
         id: get-version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            VERSION="${{ github.event.inputs.version }}"
           else
+            # Try title first, then branch name
             TITLE="${{ github.event.pull_request.title }}"
+            BRANCH="${{ github.event.pull_request.head.ref }}"
             if [[ "$TITLE" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-              echo "version=v${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+              VERSION="v${BASH_REMATCH[1]}"
+            elif [[ "$BRANCH" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+              VERSION="v${BASH_REMATCH[1]}"
             else
-              echo "Could not extract version" && exit 1
+              echo "Could not extract version from title or branch" && exit 1
             fi
           fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted Version: $VERSION"
 
   build-release:
     name: Build & Package
@@ -61,6 +67,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Verify Version
+        run: |
+          echo "Resolved Version: ${{ needs.resolve-version.outputs.version }}"
+          if [ -z "${{ needs.resolve-version.outputs.version }}" ]; then
+            echo "Error: Resolved version is empty"
+            exit 1
+          fi
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -93,27 +107,40 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
           cargo install cargo-deb
+          # Ensure binary is in the location cargo-deb looks for by default
+          mkdir -p target/release
+          cp target/${{ matrix.target }}/release/uncver-artifacts target/release/
           cargo deb --target ${{ matrix.target }} --no-build
           mv target/${{ matrix.target }}/debian/*.deb uncver-artifacts-${{ matrix.target }}.deb
 
       # ========================================================================
-      # EXTRA PACKAGING: .dmg (macOS)
+      # EXTRA PACKAGING: .dmg (macOS .app Bundle)
       # ========================================================================
       - name: Package .dmg (macOS)
         if: startsWith(matrix.os, 'macos')
         run: |
           brew install create-dmg
-          mkdir -p dmg-root
-          cp target/${{ matrix.target }}/release/uncver-artifacts dmg-root/
+          
+          APP_NAME="Uncver Artifacts"
+          BUNDLE_DIR="${APP_NAME}.app/Contents"
+          mkdir -p "${BUNDLE_DIR}/MacOS"
+          mkdir -p "${BUNDLE_DIR}/Resources"
+          
+          # Copy binary and metadata
+          cp target/${{ matrix.target }}/release/uncver-artifacts "${BUNDLE_DIR}/MacOS/"
+          cp Info.plist "${BUNDLE_DIR}/"
+          
+          # Create DMG with app-drop-link
           create-dmg \
-            --volname "uncver-artifacts-${{ matrix.target }}" \
+            --volname "${APP_NAME}" \
             --window-pos 200 120 \
             --window-size 600 300 \
             --icon-size 100 \
-            --icon "uncver-artifacts" 175 120 \
-            --hide-extension "uncver-artifacts" \
-            "uncver-artifacts-${{ matrix.target }}.dmg" \
-            dmg-root/
+            --icon "${APP_NAME}.app" 175 120 \
+            --hide-extension "${APP_NAME}.app" \
+            --app-drop-link 425 120 \
+            "Uncver-Artifacts-${{ matrix.target }}.dmg" \
+            "${APP_NAME}.app"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -126,5 +153,7 @@ jobs:
         with:
           tag_name: ${{ needs.resolve-version.outputs.version }}
           files: uncver-artifacts-${{ matrix.target }}.*
+          generate_release_notes: true
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

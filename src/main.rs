@@ -59,6 +59,8 @@ enum Commands {
         #[arg(short, long)]
         force: bool,
     },
+    /// Start the system tray indicator
+    Tray,
 }
 
 #[tokio::main]
@@ -197,6 +199,9 @@ async fn main() -> anyhow::Result<()> {
                     std::process::exit(1);
                 }
             }
+        }
+        Commands::Tray => {
+            uncver_artifacts::tray::run_tray()?;
         }
     }
 

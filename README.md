@@ -1,4 +1,8 @@
-# 🐳 uncver-artifacts
+<p align="center">
+  <img src="https://github.com/sirdavis99/uncver-artifacts/blob/master/assets/logo.png?raw=true" width="200" alt="uncver-artifacts Logo">
+</p>
+
+# 📦 uncver-artifacts
 
 [![Test](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/test.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/test.yml)
 [![Release](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release.yml)
