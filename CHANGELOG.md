@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/sirdavis99/uncver-artifacts/compare/v0.3.0...v0.4.0) (2026-04-11)
+
+
+### Features
+
+* add application icons and update release workflow to generate and bundle macOS icns files ([974f89a](https://github.com/sirdavis99/uncver-artifacts/commit/974f89abd7610de34339c8a230dadfd50c7d2979))
+* add system tray support and improve macOS release packaging workflow ([22657d3](https://github.com/sirdavis99/uncver-artifacts/commit/22657d32750e22beb2b16488ee0315efe05a3022))
+
 ## [0.3.0](https://github.com/sirdavis99/uncver-artifacts/compare/v0.2.0...v0.3.0) (2026-04-11)
 
 
