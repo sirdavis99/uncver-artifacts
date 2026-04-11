@@ -9,26 +9,21 @@ impl PodmanInstaller {
     }
 
     pub fn is_installed(&self) -> anyhow::Result<bool> {
-        let output = Command::new("podman")
-            .arg("--version")
-            .output()
-            .context("Failed to check podman installation")?;
-
-        Ok(output.status.success())
+        match Command::new("podman").arg("--version").output() {
+            Ok(output) => Ok(output.status.success()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(e) => Err(e).context("Failed to check podman installation"),
+        }
     }
 
     pub fn version(&self) -> anyhow::Result<Option<String>> {
-        let output = Command::new("podman")
-            .arg("--version")
-            .output()
-            .context("Failed to get podman version")?;
-
-        if output.status.success() {
-            Ok(Some(
-                String::from_utf8_lossy(&output.stdout).trim().to_string(),
-            ))
-        } else {
-            Ok(None)
+        match Command::new("podman").arg("--version").output() {
+            Ok(output) if output.status.success() => {
+                Ok(Some(String::from_utf8_lossy(&output.stdout).trim().to_string()))
+            }
+            Ok(_) => Ok(None),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e).context("Failed to get podman version"),
         }
     }
 
@@ -92,17 +87,26 @@ impl PodmanInstaller {
 
         tracing::info!("Downloading Podman from {}", download_url);
 
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(300))
-            .build()?;
+        let pkg_path_clone = pkg_path.clone();
+        let download_result = std::thread::spawn(move || -> anyhow::Result<()> {
+            let client = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(300))
+                .build()?;
 
-        let mut response = client
-            .get(download_url)
-            .send()
-            .context("Failed to download Podman")?;
+            let mut response = client
+                .get("https://github.com/containers/podman/releases/latest/download/podman-installer-macos-amd64.pkg")
+                .send()
+                .context("Failed to download Podman")?;
 
-        let mut file = std::fs::File::create(&pkg_path)?;
-        std::io::copy(&mut response, &mut file)?;
+            let mut file = std::fs::File::create(&pkg_path_clone)?;
+            std::io::copy(&mut response, &mut file)?;
+            
+            Ok(())
+        })
+        .join()
+        .map_err(|e| anyhow::anyhow!("Thread panicked during download: {:?}", e))?;
+
+        download_result?;
 
         tracing::info!("Installing Podman from {}", pkg_path.display());
 
