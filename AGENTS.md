@@ -29,6 +29,7 @@
 src/
 ├── main.rs          # CLI entry point — argument parsing, command dispatch
 ├── lib.rs           # Crate root — re-exports modules
+├── paths.rs         # Centralized path helpers for data dirs
 ├── artifacts/       # Artifact management module
 │   ├── mod.rs       # ArtifactConfig, ArtifactManager
 │   ├── builder.rs   # Build artifacts from config

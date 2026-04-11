@@ -36,16 +36,10 @@ pub struct ArtifactManager {
 
 impl ArtifactManager {
     pub fn new() -> Result<Self> {
-        let mut path = dirs::data_dir().ok_or_else(|| anyhow::anyhow!("No data dir found"))?;
-        path.push("uncver-artifacts");
-        path.push("artifacts");
-
-        if !path.exists() {
-            fs::create_dir_all(&path)?;
-        }
+        let path = crate::paths::get_artifacts_dir()?;
 
         Ok(Self {
-            base_dir: path.to_path_buf(),
+            base_dir: path,
         })
     }
 

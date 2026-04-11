@@ -1,5 +1,6 @@
 pub mod artifacts;
 pub mod gui;
+pub mod paths;
 pub mod podman;
 pub mod tray;
 pub mod upgrade;

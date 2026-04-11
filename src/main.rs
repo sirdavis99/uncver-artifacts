@@ -190,9 +190,7 @@ async fn main() -> anyhow::Result<()> {
 
             let (tx, rx) = std::sync::mpsc::channel();
 
-            let mut path = dirs::data_dir().expect("No data dir found");
-            path.push("uncver-artifacts");
-            path.push("artifacts");
+            let path = uncver_artifacts::paths::get_artifacts_dir()?;
 
             let mut watcher = RecommendedWatcher::new(
                 move |res: notify::Result<Event>| {

@@ -1,4 +1,5 @@
 use std::process::Command;
+use crate::paths::get_traefik_config_dir;
 
 pub struct TraefikOrchestrator;
 
@@ -13,15 +14,11 @@ impl TraefikOrchestrator {
         Ok(())
     }
 
-
-
     pub fn ensure_traefik() -> anyhow::Result<()> {
         let output = Command::new("podman").args(["ps", "-a", "--format", "{{.Image}} {{.Ports}} {{.Names}}"]).output()?;
         let containers = String::from_utf8_lossy(&output.stdout);
         
-        // Ensure config directory exists
-        let config_dir = std::env::current_dir()?.join(".uncver").join("traefik");
-        std::fs::create_dir_all(&config_dir)?;
+        let config_dir = get_traefik_config_dir()?;
 
         let needs_recreate = !containers.contains("uncver-traefik");
 
@@ -55,10 +52,9 @@ impl TraefikOrchestrator {
     }
 
     pub fn register_artifact_route(name: &str, port: u16) -> anyhow::Result<()> {
-        let config_dir = std::env::current_dir()?.join(".uncver").join("traefik");
+        let config_dir = get_traefik_config_dir()?;
         let safe_name = name.replace("uncver-", "");
         
-        // Use HostRegexp to match the domain regardless of the port (e.g. :42080)
         let config = format!(r#"
 http:
   routers:
@@ -81,13 +77,11 @@ http:
     pub fn inject_labels_and_env(string_args: &mut Vec<String>, name: &str, ports: Option<&Vec<String>>) {
         let domain = format!("{}.localhost", name.replace("uncver-", ""));
         
-        // 1. Setup traefik routing rules
         string_args.push("-l".to_string());
         string_args.push("traefik.enable=true".to_string());
         string_args.push("-l".to_string());
         string_args.push(format!("traefik.http.routers.{}.rule=Host(`{}`)", name, domain));
 
-        // 2. Set proxy target port dynamically (Defaults to 8080 now)
         let mut target_port = "8080".to_string();
         if let Some(p_list) = ports {
             if let Some(p) = p_list.first() {
@@ -99,7 +93,6 @@ http:
         string_args.push("-l".to_string());
         string_args.push(format!("traefik.http.services.{}.loadbalancer.server.port={}", name, target_port));
 
-        // 3. Inject dynamic assignment globally
         string_args.push("-e".to_string());
         string_args.push(format!("UNCVER_DOMAIN={}", domain));
     }

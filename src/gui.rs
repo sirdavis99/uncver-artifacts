@@ -63,6 +63,16 @@ pub fn run_webview_viewer(url: &str, width: Option<u16>, height: Option<u16>, x:
 
     let window = builder.build(&event_loop)?;
 
+    // Set Window Icon
+    let icon_data = include_bytes!("../assets/icon.png");
+    if let Ok(img) = image::load_from_memory(icon_data) {
+        let rgba = img.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        if let Ok(icon) = tao::window::Icon::from_rgba(rgba.into_raw(), width, height) {
+            window.set_window_icon(Some(icon));
+        }
+    }
+
     #[cfg(any(
         target_os = "windows",
         target_os = "macos",

@@ -17,11 +17,20 @@ pub fn run_tray() -> anyhow::Result<()> {
     tray_menu.append(&upgrade_item)?;
     tray_menu.append(&exit_item)?;
 
+    // Set Tray Icon
+    let icon_data = include_bytes!("../assets/icon.png");
+    let icon = if let Ok(img) = image::load_from_memory(icon_data) {
+        let rgba = img.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        tray_icon::Icon::from_rgba(rgba.into_raw(), width, height).ok()
+    } else {
+        None
+    };
+
     let _tray_icon = TrayIconBuilder::new()
         .with_menu(Box::new(tray_menu))
         .with_tooltip("uncver-artifacts")
-        // Note: For now we don't have a path to an icon file,
-        // in a real app we'd load an .ico or .png
+        .with_icon(icon.expect("Icon should be valid"))
         .build()?;
 
     let menu_channel = MenuEvent::receiver();
