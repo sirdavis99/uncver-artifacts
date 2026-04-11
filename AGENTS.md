@@ -21,6 +21,7 @@
 | Serialization      | `serde` + `serde_json`                            |
 | Container Engine   | Podman (managed via CLI subprocess calls)         |
 | File Watching      | `notify` 8.2.0                                    |
+| CI/CD              | GitHub Actions (Modular: test.yml, release.yml)   |
 
 ## Project Structure
 
@@ -32,11 +33,12 @@ src/
 │   ├── mod.rs       # ArtifactConfig, ArtifactManager
 │   ├── builder.rs   # Build artifacts from config
 │   └── watcher.rs   # File system watcher for artifacts
-└── podman/          # Podman integration module
-    ├── mod.rs       # Podman facade + PodmanError enum
-    ├── install.rs   # PodmanInstaller — detects and installs Podman
-    ├── machine.rs   # PodmanMachine — manages podman machine lifecycle
-    └── runner.rs    # PodmanRunner — runs container images
+├── podman/          # Podman integration module
+│   ├── mod.rs       # Podman facade + PodmanError enum
+│   ├── install.rs   # PodmanInstaller — detects and installs Podman
+│   ├── machine.rs   # PodmanMachine — manages podman machine lifecycle
+│   └── runner.rs    # PodmanRunner — runs container images
+└── upgrade/         # Self-upgrade module (Unix and Windows support)
 ```
 
 ## CLI Commands
@@ -50,13 +52,15 @@ src/
 | `delete <name>` | Delete an artifact |
 | `watch` | Watch artifacts directory for changes |
 | `run` | Run all default artifacts |
+| `upgrade` | Self-upgrade to the latest version |
 
 ## Key Architectural Decisions
 
 1. **CLI-only**: No GUI - all interaction through command line
 2. **Podman abstraction**: `Podman` struct acts as a facade over install, machine, and runner submodules
-3. **Artifact storage**: Artifacts stored in `~/.local/share/uncver-artifacts/artifacts/` (platform-specific data dir)
+3. **Artifact storage**: Artifacts stored in platform-specific data dirs (`dirs` crate)
 4. **Artifact format**: Each artifact is a folder with `artifact.json` containing metadata
+5. **Cross-Platform CI**: Automated builds for Linux, macOS (x64/ARM), and Windows (x64) via modular GitHub Actions.
 
 ## Artifact JSON Format
 

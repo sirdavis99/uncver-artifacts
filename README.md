@@ -1,6 +1,7 @@
 # uncver-artifacts
 
-[![CI](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/ci.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/ci.yml)
+[![Test](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/test.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/test.yml)
+[![Release](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release.yml)
 [![Release Please](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release-please.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release-please.yml)
 
 CLI tool for managing uncver artifacts with Podman integration. Built in Rust.
@@ -11,9 +12,13 @@ CLI tool for managing uncver artifacts with Podman integration. Built in Rust.
 - 📦 **Artifact Management** - Create, start, delete artifacts
 - 🔄 **Self-Upgrading** - Built-in `upgrade` command
 - 👀 **File Watching** - Auto-reload on changes
-- 🖥️ **Cross-Platform** - macOS (Intel & Apple Silicon) and Linux
+- 🖥️ **Cross-Platform** - macOS (Intel & Apple Silicon), Linux, and Windows
 
 ## Installation
+
+### Windows (Manual)
+
+Download the latest `uncver-artifacts-x86_64-pc-windows-msvc.zip` from the [Releases](https://github.com/sirdavis99/uncver-artifacts/releases) page and extract `uncver-artifacts.exe` to a folder in your PATH.
 
 ### macOS (Homebrew)
 

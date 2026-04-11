@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 description = "CLI tool for managing uncver artifacts with Podman integration"
 license = "MIT"
-authors = ["uncver"]
-repository = "https://github.com/uncver/uncver-artifacts"
+authors = ["Sir Davis <sirdavis@uncver.co>"]
+repository = "https://github.com/sirdavis99/uncver-artifacts"
+homepage = "https://github.com/sirdavis99/uncver-artifacts"
 keywords = ["podman", "artifacts", "cli", "containers"]
 categories = ["command-line-utilities"]
 
