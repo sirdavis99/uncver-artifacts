@@ -1,6 +1,6 @@
 [package]
 name = "uncver-artifacts"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "CLI tool for managing uncver artifacts with Podman integration"
 license = "MIT"
