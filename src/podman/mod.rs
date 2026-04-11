@@ -1,10 +1,12 @@
 pub mod install;
 pub mod machine;
 pub mod runner;
+pub mod traefik;
 
 pub use install::PodmanInstaller;
 pub use machine::PodmanMachine;
 pub use runner::PodmanRunner;
+pub use traefik::TraefikOrchestrator;
 
 use anyhow::Result;
 use thiserror::Error;
@@ -72,6 +74,20 @@ impl Podman {
 
     pub fn run(&self, image: &str) -> Result<String> {
         self.inner.runner.run(image)
+    }
+
+    pub fn run_detached(
+        &self,
+        image: &str,
+        name: Option<&str>,
+        ports: Option<&Vec<String>>,
+        env: Option<&std::collections::HashMap<String, String>>,
+    ) -> Result<String> {
+        self.inner.runner.run_detached(image, name, ports, env)
+    }
+
+    pub fn build(&self, tag: &str, path: &str) -> Result<()> {
+        self.inner.runner.build(tag, path)
     }
 
     pub fn is_available(&self) -> bool {

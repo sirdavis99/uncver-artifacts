@@ -21,7 +21,11 @@ impl PodmanMachine {
         }
 
         for line in stdout.lines() {
-            if line.contains("podman-machine") && line.contains("Running") {
+            let lower = line.to_lowercase();
+            // Different podman versions render "Running" or "Currently running" differently
+            if lower.contains("podman-machine")
+                && (lower.contains("running") || lower.contains("up"))
+            {
                 return Ok(true);
             }
         }
@@ -32,18 +36,25 @@ impl PodmanMachine {
     pub fn start(&self) -> anyhow::Result<()> {
         tracing::info!("Starting Podman machine...");
 
-        let status = Command::new("podman")
+        let output = Command::new("podman")
             .args(["machine", "start"])
-            .status()
+            .output()
             .context("Failed to start podman machine")?;
 
-        if !status.success() {
-            let output = Command::new("podman")
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        // If it failed, but the error says "already running", we consider it a success.
+        if !output.status.success()
+            && !stderr.to_lowercase().contains("already running")
+            && !stdout.to_lowercase().contains("already running")
+        {
+            let init_output = Command::new("podman")
                 .args(["machine", "init"])
                 .output()
                 .context("Failed to init podman machine")?;
 
-            if !output.status.success() {
+            if !init_output.status.success() {
                 anyhow::bail!("Failed to start or init podman machine");
             }
 

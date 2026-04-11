@@ -48,6 +48,7 @@ clap = { version = "4.5", features = ["derive"] }
 tempfile = "3.8"
 tray-icon = "0.22.0"
 tao = "0.35.0"
+wry = "0.55.0"
 
 [profile.release]
 opt-level = 3

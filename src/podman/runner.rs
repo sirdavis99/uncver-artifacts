@@ -9,10 +9,13 @@ impl PodmanRunner {
     }
 
     pub fn run(&self, image: &str) -> anyhow::Result<String> {
+        crate::podman::TraefikOrchestrator::ensure_network()?;
+        crate::podman::TraefikOrchestrator::ensure_traefik()?;
+
         tracing::info!("Running podman container: {}", image);
 
         let output = Command::new("podman")
-            .args(["run", "--rm", image])
+            .args(["run", "--rm", "--network", "uncver-network", image])
             .output()
             .context("Failed to run podman container")?;
 
@@ -21,9 +24,6 @@ impl PodmanRunner {
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
             anyhow::bail!("Podman run failed: {}", stderr)
-        }
-    }
-
     pub fn build(&self, tag: &str, path: &str) -> anyhow::Result<()> {
         tracing::info!("Building podman image: {} from path: {}", tag, path);
 
@@ -39,8 +39,22 @@ impl PodmanRunner {
         Ok(())
     }
 
-    pub fn run_detached(&self, image: &str, name: Option<&str>) -> anyhow::Result<String> {
+    pub fn run_detached(
+        &self,
+        image: &str,
+        name: Option<&str>,
+        ports: Option<&Vec<String>>,
+        env: Option<&std::collections::HashMap<String, String>>,
+    ) -> anyhow::Result<String> {
+        crate::podman::TraefikOrchestrator::ensure_network()?;
+        crate::podman::TraefikOrchestrator::ensure_traefik()?;
+
         tracing::info!("Running podman container detached: {}", image);
+
+        // Force cleanup any pre-existing container with the same name so we can safely restart/re-run it
+        if let Some(n) = name {
+            let _ = Command::new("podman").args(["rm", "-f", n]).output();
+        }
 
         let mut args = vec!["run", "-d"];
 
@@ -49,10 +63,41 @@ impl PodmanRunner {
             args.push(n);
         }
 
-        args.push(image);
+        args.push("--network");
+        args.push("uncver-network");
+
+        // We completely ignore raw port bindings if Traefik handles it, but keep them for backwards comp if specified manually.
+        // Wait, the user specifically mentioned Traefik handles port mapping so we shouldn't bind ports to host directly!
+        // We will just expose them to the podman network.
+        // Or if we must, we can leave `-p` out. The user said: "traefik already knows how to run the port mapping"
+        // Let's add the Traefik labels!
+
+        if let Some(p_list) = ports {
+            for p in p_list {
+                args.push("-p");
+                args.push(p);
+            }
+        }
+
+        // Let's rebuild the dynamic arguments as Strings so we don't worry about lifetimes
+        let mut string_args: Vec<String> = args.into_iter().map(|s| s.to_string()).collect();
+
+        // Inject dynamic URL based on name explicitly by delegating to traefik orchestrator
+        if let Some(n) = name {
+            crate::podman::TraefikOrchestrator::inject_labels_and_env(&mut string_args, n, ports);
+        }
+
+        if let Some(env_map) = env {
+            for (k, v) in env_map {
+                string_args.push("-e".to_string());
+                string_args.push(format!("{}={}", k, v));
+            }
+        }
+
+        string_args.push(image.to_string());
 
         let output = Command::new("podman")
-            .args(&args)
+            .args(&string_args)
             .output()
             .context("Failed to run podman container detached")?;
 

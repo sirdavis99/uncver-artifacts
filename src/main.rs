@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use std::sync::Arc;
 use tracing::{error, info};
 
-use uncver_artifacts::{ArtifactConfig, ArtifactManager, Podman};
+use uncver_artifacts::{open_gui_window, ArtifactConfig, ArtifactManager, Podman};
 
 mod upgrade;
 
@@ -66,6 +66,24 @@ enum Commands {
         /// Path to the directory containing artifact.json
         path: String,
     },
+    /// Internal command to launch a standalone native webview window
+    Viewer {
+        /// URL to open
+        #[arg(value_name = "URL")]
+        url: String,
+        /// Width of the window
+        #[arg(long)]
+        width: Option<u16>,
+        /// Height of the window
+        #[arg(long)]
+        height: Option<u16>,
+        /// X position
+        #[arg(long)]
+        x: Option<i32>,
+        /// Y position
+        #[arg(long)]
+        y: Option<i32>,
+    },
 }
 
 #[tokio::main]
@@ -110,8 +128,16 @@ async fn main() -> anyhow::Result<()> {
                 if let Some(ref image) = artifact.container_image {
                     podman.ensure_installed()?;
                     podman.ensure_machine_running()?;
-                    match podman.run(image) {
-                        Ok(output) => println!("Artifact started:\n{}", output),
+                    match podman.run_detached(
+                        image,
+                        Some(&name),
+                        artifact.ports.as_ref(),
+                        artifact.environment.as_ref(),
+                    ) {
+                        Ok(output) => {
+                            println!("Artifact started in background with ID:\n{}", output);
+                            open_gui_window(artifact);
+                        }
                         Err(e) => error!("Failed to start artifact: {}", e),
                     }
                 } else {
@@ -134,6 +160,9 @@ async fn main() -> anyhow::Result<()> {
                 url,
                 local_path,
                 container_image,
+                gui_window: None,
+                ports: None,
+                environment: None,
             };
             let path = artifacts.create_artifact(&config)?;
             info!("Created artifact at: {:?}", path);
@@ -188,8 +217,19 @@ async fn main() -> anyhow::Result<()> {
             for artifact in list {
                 if let Some(ref image) = artifact.container_image {
                     info!("Starting artifact: {}", artifact.name);
-                    match podman.run(image) {
-                        Ok(output) => println!("{} started:\n{}", artifact.name, output),
+                    match podman.run_detached(
+                        image,
+                        Some(&artifact.name),
+                        artifact.ports.as_ref(),
+                        artifact.environment.as_ref(),
+                    ) {
+                        Ok(output) => {
+                            println!(
+                                "{} started in background with ID:\n{}",
+                                artifact.name, output
+                            );
+                            open_gui_window(&artifact);
+                        }
                         Err(e) => error!("Failed to start {}: {}", artifact.name, e),
                     }
                 }
@@ -223,6 +263,18 @@ async fn main() -> anyhow::Result<()> {
             let mut config: ArtifactConfig = serde_json::from_str(&content)
                 .map_err(|e| anyhow::anyhow!("Invalid artifact.json format: {}", e))?;
 
+            let dockerfile_path = absolute_path.join("Dockerfile");
+            if dockerfile_path.exists() {
+                info!(
+                    "Dockerfile detected! Building local image for {}",
+                    config.name
+                );
+                podman.ensure_installed()?;
+                podman.ensure_machine_running()?;
+                podman.build(&config.name, &absolute_path.to_string_lossy())?;
+                config.container_image = Some(config.name.clone());
+            }
+
             // Replace the URL with the absolute path of the directory
             config.url = Some(absolute_path.to_string_lossy().into_owned());
 
@@ -235,8 +287,16 @@ async fn main() -> anyhow::Result<()> {
                 info!("Starting artifact: {}", config.name);
                 podman.ensure_installed()?;
                 podman.ensure_machine_running()?;
-                match podman.run(image) {
-                    Ok(output) => println!("{} started:\n{}", config.name, output),
+                match podman.run_detached(
+                    image,
+                    Some(&config.name),
+                    config.ports.as_ref(),
+                    config.environment.as_ref(),
+                ) {
+                    Ok(output) => {
+                        println!("{} started in background with ID:\n{}", config.name, output);
+                        open_gui_window(&config);
+                    }
                     Err(e) => error!("Failed to start {}: {}", config.name, e),
                 }
             } else {
@@ -245,6 +305,9 @@ async fn main() -> anyhow::Result<()> {
                     config.name
                 );
             }
+        }
+        Commands::Viewer { url, width, height, x, y } => {
+            uncver_artifacts::gui::run_webview_viewer(&url, width, height, x, y)?;
         }
     }
 

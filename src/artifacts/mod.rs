@@ -7,12 +7,26 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GuiWindow {
+    pub enabled: bool,
+    pub port: Option<u16>,
+    pub width: Option<u16>,
+    pub height: Option<u16>,
+    pub x: Option<i32>,
+    pub y: Option<i32>,
+    pub allow_fullscreen: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArtifactConfig {
     pub name: String,
     pub description: Option<String>,
     pub url: Option<String>,
     pub local_path: Option<String>,
     pub container_image: Option<String>,
+    pub gui_window: Option<GuiWindow>,
+    pub ports: Option<Vec<String>>,
+    pub environment: Option<std::collections::HashMap<String, String>>,
 }
 
 #[derive(Clone)]
