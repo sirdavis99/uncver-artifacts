@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/sirdavis99/uncver-artifacts/compare/v0.2.0...v0.3.0) (2026-04-11)
+
+
+### Features
+
+* expand release pipeline to support .deb and .dmg packaging with updated documentation ([66ace7a](https://github.com/sirdavis99/uncver-artifacts/commit/66ace7a8d313f1abd4102d392454899703d2ad80))
+
 ## [0.2.0](https://github.com/sirdavis99/uncver-artifacts/compare/v0.1.0...v0.2.0) (2026-04-11)
 
 
