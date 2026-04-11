@@ -1,110 +1,106 @@
-# uncver-artifacts
+# 🐳 uncver-artifacts
 
 [![Test](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/test.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/test.yml)
 [![Release](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release.yml)
 [![Release Please](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release-please.yml/badge.svg)](https://github.com/sirdavis99/uncver-artifacts/actions/workflows/release-please.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-CLI tool for managing uncver artifacts with Podman integration. Built in Rust.
+**uncver-artifacts** is a lightning-fast, cross-platform CLI tool built in Rust for managing containerized artifacts powered by **Podman**. It simplifies the lifecycle of local development environments, providing seamless installation, orchestration, and automated updates.
 
-## Features
+---
 
-- 🐳 **Podman Integration** - Manage containers with ease
-- 📦 **Artifact Management** - Create, start, delete artifacts
-- 🔄 **Self-Upgrading** - Built-in `upgrade` command
-- 👀 **File Watching** - Auto-reload on changes
-- 🖥️ **Cross-Platform** - macOS (Intel & Apple Silicon), Linux, and Windows
+## ✨ Features
 
-## Installation
+- 🐳 **Native Podman Integration** — Orchestrate containers without the Docker daemon overhead.
+- 📦 **Artifact Management** — Effortlessly list, create, and manage complex artifact configurations.
+- 🔄 **Autonomous Upgrades** — Built-in `upgrade` command keeps your CLI and dependencies synchronized.
+- 👀 **Smart File Watching** — High-performance watcher reloads your artifacts instantly upon file changes.
+- 🏁 **True Cross-Platform** — Native support for **macOS** (Intel & Apple Silicon), **Linux**, and **Windows**.
+- 🛠️ **Zero-Config Setup** — Single-command dependency installation with `uncver-artifacts install`.
 
-### Windows (Manual)
+---
 
-Download the latest `uncver-artifacts-x86_64-pc-windows-msvc.zip` from the [Releases](https://github.com/sirdavis99/uncver-artifacts/releases) page and extract `uncver-artifacts.exe` to a folder in your PATH.
+## 🚀 Installation
 
-### macOS (Homebrew)
+### 🖥️ Windows (Manual)
+
+1. Download the latest `uncver-artifacts-x86_64-pc-windows-msvc.zip` from [Releases](https://github.com/sirdavis99/uncver-artifacts/releases).
+2. Extract the `uncver-artifacts.exe` and add its parent directory to your system `PATH`.
+
+### 🍎 macOS (Homebrew)
 
 ```bash
 brew tap sirdavis99/uncver
 brew install uncver-artifacts
 ```
 
-### macOS/Linux (Manual)
+### 🐧 Linux / macOS (Manual)
 
 ```bash
-# Download latest release
-curl -L -o uncver-artifacts.tar.gz \
-  https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-$(uname -m)-apple-darwin.tar.gz
-
-# Extract and install
-tar -xzf uncver-artifacts.tar.gz
+# Auto-detect architecture and download
+curl -L https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-$(uname -m)-apple-darwin.tar.gz | tar -xz
 sudo mv uncver-artifacts /usr/local/bin/
 ```
 
-### Build from Source
+---
+
+## 📖 Quick Start
 
 ```bash
-git clone https://github.com/sirdavis99/uncver-artifacts.git
-cd uncver-artifacts
-cargo build --release
-sudo cp target/release/uncver-artifacts /usr/local/bin/
-```
-
-## Quick Start
-
-```bash
-# 1. Install dependencies (Podman)
+# 1. Initialize your environment (Installs Podman if missing)
 uncver-artifacts install
 
-# 2. List available artifacts
+# 2. Explore available artifacts
 uncver-artifacts list
 
-# 3. Create a new artifact
-uncver-artifacts create --name my-artifact --description "My artifact"
+# 3. Create a custom artifact
+uncver-artifacts create --name my-app --description "New Rust Service"
 
-# 4. Run default artifacts
+# 4. Spin up your default environment
 uncver-artifacts run
 
-# 5. Watch for changes
+# 5. Enable developer mode with hot-reload
 uncver-artifacts watch
 ```
 
-## Commands
+---
 
-| Command | Description |
-|---------|-------------|
-| `install` | Install and setup Podman dependencies |
-| `list` | List all artifacts |
-| `start <name>` | Start an artifact by name |
-| `create` | Create a new artifact |
-| `delete <name>` | Delete an artifact |
-| `watch` | Watch artifacts directory for changes |
-| `run` | Run all default artifacts |
-| `upgrade` | Upgrade to latest version |
+## 🛠️ CLI Reference
 
-## Upgrading
+| Command | Usage | Description |
+|:---|:---|:---|
+| `install` | `uncver-artifacts install` | Sets up Podman and machine dependencies. |
+| `list` | `uncver-artifacts list` | Displays all managed artifacts and their status. |
+| `start` | `uncver-artifacts start <name>` | Boots a specific artifact container. |
+| `create` | `uncver-artifacts create [options]` | Creates a new artifact metadata folder. |
+| `delete` | `uncver-artifacts delete <name>` | Removes artifact configuration and data. |
+| `watch` | `uncver-artifacts watch` | Watches for file changes to trigger reloads. |
+| `run` | `uncver-artifacts run` | Executes the default set of artifacts. |
+| `upgrade` | `uncver-artifacts upgrade` | Checks for and installs the latest CLI binary. |
 
-```bash
-# Check for and install updates
-uncver-artifacts upgrade
+---
 
-# Force reinstall
-uncver-artifacts upgrade --force
-```
+## ⚙️ Requirements
 
-## Requirements
+- **Podman Desktop / CLI** — Required for container orchestration.
+- **macOS Users**: requires a initialized Podman Machine (`podman machine init`).
+- **Windows Users**: requires WSL2 backend for Podman.
 
-- **Podman** - Container engine ([Installation Guide](https://podman.io/getting-started/installation))
-- **macOS**: Podman Machine required (`podman machine init && podman machine start`)
+---
 
-## Documentation
+## 🤝 Contributing
 
-- [Installation Guide](INSTALL.md) - Detailed installation instructions
-- [Contributing](CONTRIBUTING.md) - How to contribute
+We love contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
 
-## License
+## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+Distributed under the **MIT License**. See `LICENSE` for more information.
 
-## Related Projects
+## 🔗 Related
 
-- [uncver-artifact-lib](https://github.com/uncoverthefuture-org/uncver-artifact-lib) - Artifact library and definitions
-- [uncver-kg](https://github.com/sirdavis99/uncver-kg) - Knowledge graph for artifact management
+- [uncver-kg](https://github.com/sirdavis99/uncver-kg) — Knowledge Graph engine for artifact intelligence.
+- [uncver-artifact-lib](https://github.com/uncoverthefuture-org/uncver-artifact-lib) — Core definitions for artifact schemas.
+
+---
+
+Developed with ❤️ by the **uncver** team.

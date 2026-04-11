@@ -1,6 +1,29 @@
-# Installation
+# 📥 Installation Guide
 
-## macOS
+This guide provides detailed instructions for installing **uncver-artifacts** on macOS, Linux, and Windows.
+
+---
+
+## 🖥️ Windows
+
+### Manual Installation (Recommended)
+
+1. Navigate to the [Latest Releases](https://github.com/sirdavis99/uncver-artifacts/releases/latest) page.
+2. Download `uncver-artifacts-x86_64-pc-windows-msvc.zip`.
+3. Extract the `uncver-artifacts.exe` file to a permanent location (e.g., `C:\tools\uncver-artifacts\`).
+4. Add that location to your System Environment Variable `Path`:
+   - Search for "Edit the system environment variables" in Windows Search.
+   - Click **Environment Variables**.
+   - Under **System variables**, find `Path` and click **Edit**.
+   - Click **New** and paste the folder path.
+
+### Prerequisites (Windows)
+- **WSL 2**: Required for Podman. Run `wsl --install` in PowerShell as administrator if you haven't already.
+- **Podman**: You can install it via [Podman Desktop](https://podman-desktop.io/) or by running `uncver-artifacts install` after placing the binary.
+
+---
+
+## 🍎 macOS
 
 ### Using Homebrew (Recommended)
 
@@ -17,16 +40,12 @@ uncver-artifacts --version
 
 ### Manual Installation
 
-Download the latest release for your architecture:
-
 ```bash
-# For Apple Silicon (M1/M2/M3)
+# Detect architecture (ARM/Intel) and download
+ARCH=$(uname -m)
+OS="apple-darwin"
 curl -L -o uncver-artifacts.tar.gz \
-  https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-aarch64-apple-darwin.tar.gz
-
-# For Intel Macs
-curl -L -o uncver-artifacts.tar.gz \
-  https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-x86_64-apple-darwin.tar.gz
+  "https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-$ARCH-$OS.tar.gz"
 
 # Extract and install
 tar -xzf uncver-artifacts.tar.gz
@@ -34,32 +53,14 @@ sudo mv uncver-artifacts /usr/local/bin/
 chmod +x /usr/local/bin/uncver-artifacts
 ```
 
-### Building from Source
+---
 
-```bash
-# Clone the repository
-git clone https://github.com/sirdavis99/uncver-artifacts.git
-cd uncver-artifacts
-
-# Build release binary
-cargo build --release
-
-# Install locally
-cp target/release/uncver-artifacts /usr/local/bin/
-```
-
-## Linux
-
-### Using Cargo
-
-```bash
-cargo install --git https://github.com/sirdavis99/uncver-artifacts
-```
+## 🐧 Linux
 
 ### Manual Installation
 
 ```bash
-# Download the latest release
+# Download for Linux x86_64
 curl -L -o uncver-artifacts.tar.gz \
   https://github.com/sirdavis99/uncver-artifacts/releases/latest/download/uncver-artifacts-x86_64-unknown-linux-gnu.tar.gz
 
@@ -69,114 +70,70 @@ sudo mv uncver-artifacts /usr/local/bin/
 chmod +x /usr/local/bin/uncver-artifacts
 ```
 
-## Prerequisites
+### Using Cargo
 
-### Podman
-
-uncver-artifacts requires Podman to be installed:
-
-**macOS:**
 ```bash
-brew install podman
-podman machine init
-podman machine start
+cargo install --git https://github.com/sirdavis99/uncver-artifacts
 ```
 
-**Linux:**
+---
+
+## 🏗️ Building from Source
+
+If you prefer to build the binary yourself:
+
 ```bash
-# Ubuntu/Debian
-sudo apt-get install podman
+git clone https://github.com/sirdavis99/uncver-artifacts.git
+cd uncver-artifacts
+cargo build --release
 
-# Fedora
-sudo dnf install podman
+# Install locally
+sudo cp target/release/uncver-artifacts /usr/local/bin/
+```
 
-# Or let uncver-artifacts install it
+---
+
+## 🛠️ Post-Installation Setup
+
+Once installed, run the following command to ensure all container dependencies are met:
+
+```bash
 uncver-artifacts install
 ```
 
-## Quick Start
+This will:
+1. Detect if Podman is installed.
+2. Initialize the Podman machine (macOS/Windows).
+3. Ensure the container runner is ready.
+
+---
+
+## 🔄 Updating
+
+Updating is handled automatically by the CLI:
 
 ```bash
-# 1. Install dependencies (Podman)
-uncver-artifacts install
-
-# 2. List available artifacts
-uncver-artifacts list
-
-# 3. Run default artifacts
-uncver-artifacts run
-
-# 4. Watch for changes
-uncver-artifacts watch
-```
-
-## Upgrading
-
-### Check for Updates
-
-```bash
-# Check if a new version is available
 uncver-artifacts upgrade
+```
 
-# Force reinstall even if on latest version
+To force a re-installation of the latest version:
+```bash
 uncver-artifacts upgrade --force
 ```
 
-The upgrade command will:
-1. Check GitHub releases for the latest version
-2. Compare with your current version
-3. Download the appropriate binary for your platform (macOS Intel/ARM, Linux x86_64)
-4. Backup your current binary
-5. Replace with the new version
-6. Clean up backup on success
+---
 
-## Verifying Installation
+## ❓ Troubleshooting
 
+### "Command not found"
+Ensure the directory where you placed `uncver-artifacts` is in your system's `PATH`.
+
+### Podman machine issues (macOS)
+If the container environment is unhealthy, try restarting the machine:
 ```bash
-# Check version
-uncver-artifacts --version
-
-# View help
-uncver-artifacts --help
-
-# Check Podman status
-podman version
-podman machine list
-```
-
-## Troubleshooting
-
-### Podman not found
-
-```bash
-# macOS
-brew install podman
-podman machine init
+podman machine stop
 podman machine start
-
-# Or use the install command
-uncver-artifacts install
 ```
 
-### Permission denied
-
-```bash
-# Make sure binary is executable
-chmod +x /usr/local/bin/uncver-artifacts
-
-# Or install to local bin
-mkdir -p ~/.local/bin
-cp uncver-artifacts ~/.local/bin/
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-## Uninstalling
-
-```bash
-# Homebrew
-brew uninstall uncver-artifacts
-brew untap sirdavis99/uncver
-
-# Manual
-rm /usr/local/bin/uncver-artifacts
-```
+### Windows WSL2 issues
+Ensure your WSL distribution is up to date: `wsl --update`.

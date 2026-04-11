@@ -1,74 +1,101 @@
 name: Release
 
 on:
-  push:
-    tags: [ 'v*' ]
+  pull_request:
+    types: [closed]
+    branches: [main, master]
   workflow_dispatch:
-
-env:
-  CARGO_TERM_COLOR: always
+    inputs:
+      version:
+        description: 'Version tag (v*.*.*)'
+        required: true
 
 jobs:
+  resolve-version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'pull_request' && 
+       github.event.pull_request.merged == true && 
+       startsWith(github.event.pull_request.head.ref, 'release-please--')) ||
+      github.event_name == 'workflow_dispatch'
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - name: Extract version
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "✅ Version (Dispatch): ${{ github.event.inputs.version }}"
+          else
+            TITLE="${{ github.event.pull_request.title }}"
+            if [[ "$TITLE" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+              VERSION="v${BASH_REMATCH[1]}"
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+              echo "✅ Version (PR): $VERSION"
+            else
+              echo "❌ Could not extract version from title: $TITLE" && exit 1
+            fi
+          fi
+
   build-release:
-    name: Build Release Binaries
+    name: Build & Release
+    needs: resolve-version
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            suffix: ""
             archive: "tar.gz"
           - target: x86_64-apple-darwin
             os: macos-latest
-            suffix: ""
             archive: "tar.gz"
           - target: aarch64-apple-darwin
             os: macos-latest
-            suffix: ""
             archive: "tar.gz"
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            suffix: ".exe"
             archive: "zip"
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: ${{ matrix.target }}
-    
-    - name: Build release binary
-      run: cargo build --release --target ${{ matrix.target }}
-    
-    - name: Package binary (Unix)
-      if: matrix.os != 'windows-latest'
-      shell: bash
-      run: |
-        cd target/${{ matrix.target }}/release
-        tar czf ../../../uncver-artifacts-${{ matrix.target }}.tar.gz uncver-artifacts
-        cd -
-    
-    - name: Package binary (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        cd target/${{ matrix.target }}/release
-        Compress-Archive -Path "uncver-artifacts.exe" -DestinationPath "../../../uncver-artifacts-${{ matrix.target }}.zip"
-        cd -
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: uncver-artifacts-${{ matrix.target }}
-        path: uncver-artifacts-${{ matrix.target }}.${{ matrix.archive }}
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+      
+      - name: Package binary (Unix)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../uncver-artifacts-${{ matrix.target }}.tar.gz uncver-artifacts
+          cd -
+      
+      - name: Package binary (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd target/${{ matrix.target }}/release
+          Compress-Archive -Path "uncver-artifacts.exe" -DestinationPath "../../../uncver-artifacts-${{ matrix.target }}.zip"
+          cd -
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uncver-artifacts-${{ matrix.target }}
+          path: uncver-artifacts-${{ matrix.target }}.${{ matrix.archive }}
 
-    - name: Upload to GitHub Release
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/v')
-      with:
-        files: uncver-artifacts-${{ matrix.target }}.${{ matrix.archive }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.version }}
+          files: uncver-artifacts-${{ matrix.target }}.${{ matrix.archive }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
