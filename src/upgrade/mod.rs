@@ -77,21 +77,21 @@ impl UpgradeManager {
         // Remove 'v' prefix if present
         let current = current.trim_start_matches('v');
         let latest = latest.trim_start_matches('v');
- 
+
         let c_parts: Vec<&str> = current.split('.').collect();
         let l_parts: Vec<&str> = latest.split('.').collect();
- 
+
         for (c, l) in c_parts.iter().zip(l_parts.iter()) {
             let c_num: u32 = c.parse().unwrap_or(0);
             let l_num: u32 = l.parse().unwrap_or(0);
- 
+
             if l_num > c_num {
                 return true;
             } else if c_num > l_num {
                 return false;
             }
         }
- 
+
         l_parts.len() > c_parts.len()
     }
 
