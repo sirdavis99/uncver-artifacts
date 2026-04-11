@@ -186,10 +186,11 @@ impl PodmanInstaller {
             self.install_via_script()?;
         }
 
+        self.init_machine()?;
         Ok(())
     }
 
-    #[allow(dead_code)]
+    #[cfg(not(target_os = "macos"))]
     fn install_via_script(&self) -> anyhow::Result<()> {
         let script_url = "https://get.podman.io";
 
@@ -208,6 +209,7 @@ impl PodmanInstaller {
         Ok(())
     }
 
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     fn init_machine(&self) -> anyhow::Result<()> {
         let output = Command::new("podman")
             .args(["machine", "list"])
