@@ -1,7 +1,7 @@
 use std::process::Command;
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tray_icon::{
-    menu::{Menu, MenuItem, MenuEvent},
+    menu::{Menu, MenuEvent, MenuItem},
     TrayIconBuilder,
 };
 
@@ -20,7 +20,7 @@ pub fn run_tray() -> anyhow::Result<()> {
     let _tray_icon = TrayIconBuilder::new()
         .with_menu(Box::new(tray_menu))
         .with_tooltip("uncver-artifacts")
-        // Note: For now we don't have a path to an icon file, 
+        // Note: For now we don't have a path to an icon file,
         // in a real app we'd load an .ico or .png
         .build()?;
 

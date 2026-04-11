@@ -126,13 +126,29 @@ jobs:
           mkdir -p "${BUNDLE_DIR}/MacOS"
           mkdir -p "${BUNDLE_DIR}/Resources"
           
+          # Create .icns file for the app icon
+          mkdir icon.iconset
+          sips -z 16 16 assets/icon.png --out icon.iconset/icon_16x16.png
+          sips -z 32 32 assets/icon.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32 assets/icon.png --out icon.iconset/icon_32x32.png
+          sips -z 64 64 assets/icon.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128 assets/icon.png --out icon.iconset/icon_128x128.png
+          sips -z 256 256 assets/icon.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256 assets/icon.png --out icon.iconset/icon_256x256.png
+          sips -z 512 512 assets/icon.png --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512 assets/icon.png --out icon.iconset/icon_512x512.png
+          sips -z 1024 1024 assets/icon.png --out icon.iconset/icon_512x512@2x.png
+          iconutil -c icns icon.iconset
+          
           # Copy binary and metadata
           cp target/${{ matrix.target }}/release/uncver-artifacts "${BUNDLE_DIR}/MacOS/"
           cp Info.plist "${BUNDLE_DIR}/"
+          cp icon.icns "${BUNDLE_DIR}/Resources/AppIcon.icns"
           
           # Create DMG with app-drop-link
           create-dmg \
             --volname "${APP_NAME}" \
+            --volicon icon.icns \
             --window-pos 200 120 \
             --window-size 600 300 \
             --icon-size 100 \
