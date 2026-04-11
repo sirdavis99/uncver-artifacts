@@ -6,9 +6,9 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
 const GITHUB_REPO: &str = "sirdavis99/uncver-artifacts";
