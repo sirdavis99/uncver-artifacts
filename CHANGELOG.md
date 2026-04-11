@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0](https://github.com/sirdavis99/uncver-artifacts/compare/v0.1.0...v0.2.0) (2026-04-11)
+
+
+### Features
+
+* add podman machine initialization and improve cross-platform compatibility for binary permissions ([b95b15d](https://github.com/sirdavis99/uncver-artifacts/commit/b95b15d56e31013eacc1ec4fb891d9eec4a0f272))
+* add Windows support and modularize CI/CD workflows into test and release pipelines ([88e5e51](https://github.com/sirdavis99/uncver-artifacts/commit/88e5e514189639e767df702164d30d5bc9e16830))
+* implement semantic version comparison logic for upgrade checks ([e45b19b](https://github.com/sirdavis99/uncver-artifacts/commit/e45b19b34331a91d134aef4bec5289ad6d950900))
+
 ## 0.1.0 (2026-04-09)
 
 
