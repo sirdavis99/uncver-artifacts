@@ -234,6 +234,170 @@ impl PodmanInstaller {
 
         Ok(())
     }
+
+    pub fn enable_autostart(&self) -> anyhow::Result<()> {
+        tracing::info!("Setting up Podman auto-start on system boot...");
+
+        #[cfg(target_os = "macos")]
+        {
+            self.enable_autostart_macos()?;
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            self.enable_autostart_linux()?;
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            self.enable_autostart_windows()?;
+        }
+
+        tracing::info!("Podman auto-start enabled");
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    fn enable_autostart_macos(&self) -> anyhow::Result<()> {
+        let launch_agents_dir = dirs::home_dir()
+            .map(|h| h.join("Library/LaunchAgents"))
+            .context("Failed to get home directory")?;
+
+        std::fs::create_dir_all(&launch_agents_dir)?;
+
+        let plist_path = launch_agents_dir.join("com.uncver.podman.plist");
+        let plist_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.uncver.podman</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/podman</string>
+        <string>machine</string>
+        <string>start</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
+"#;
+
+        std::fs::write(&plist_path, plist_content)?;
+        tracing::info!("Created LaunchAgent at {:?}", plist_path);
+
+        let _ = Command::new("launchctl")
+            .args(["load", plist_path.to_str().unwrap()])
+            .output();
+
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    fn enable_autostart_linux(&self) -> anyhow::Result<()> {
+        let systemd_dir = std::env::var("XDG_CONFIG_HOME")
+            .map(|p| std::path::PathBuf::from(p).join("systemd/user"))
+            .or_else(|_| dirs::home_dir().map(|h| h.join(".config/systemd/user")))
+            .context("Failed to determine systemd user directory")?;
+
+        std::fs::create_dir_all(&systemd_dir)?;
+
+        let service_path = systemd_dir.join("podman-machines-start.service");
+        let service_content = r#"[Unit]
+Description=Podman machines start
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/podman machine start -a
+StandardOutput=journal
+[Install]
+WantedBy=default.target
+"#;
+
+        std::fs::write(&service_path, service_content)?;
+        tracing::info!("Created systemd service at {:?}", service_path);
+
+        let _ = Command::new("systemctl")
+            .args(["--user", "enable", "podman-machines-start.service"])
+            .output();
+
+        let _ = Command::new("systemctl")
+            .args(["--user", "start", "podman-machines-start.service"])
+            .output();
+
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows")]
+    fn enable_autostart_windows(&self) -> anyhow::Result<()> {
+        let task_name = "uncver_podman_start";
+
+        let exe_path = std::env::current_exe()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| "podman".to_string());
+
+        let status = Command::new("schtasks")
+            .args([
+                "/Create",
+                "/SC",
+                "ONLOGIN",
+                "/TN",
+                task_name,
+                "/TR",
+                &format!("{} machine start", exe_path),
+                "/F",
+            ])
+            .status()
+            .context("Failed to create scheduled task")?;
+
+        if !status.success() {
+            anyhow::bail!("schtasks creation failed");
+        }
+
+        tracing::info!("Created Windows Task Scheduler task: {}", task_name);
+        Ok(())
+    }
+
+    pub fn disable_autostart(&self) -> anyhow::Result<()> {
+        tracing::info!("Removing Podman auto-start...");
+
+        #[cfg(target_os = "macos")]
+        {
+            let plist_path =
+                dirs::home_dir().map(|h| h.join("Library/LaunchAgents/com.uncver.podman.plist"));
+            if let Some(path) = plist_path {
+                if path.exists() {
+                    let _ = Command::new("launchctl")
+                        .args(["unload", path.to_str().unwrap()])
+                        .output();
+                    let _ = std::fs::remove_file(path);
+                }
+            }
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            let _ = Command::new("systemctl")
+                .args(["--user", "disable", "podman-machines-start.service"])
+                .output();
+            if let Some(config_dir) = dirs::config_dir() {
+                let service_path = config_dir.join("systemd/user/podman-machines-start.service");
+                let _ = std::fs::remove_file(service_path);
+            }
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let _ = Command::new("schtasks")
+                .args(["/Delete", "/TN", "uncver_podman_start", "/F"])
+                .output();
+        }
+
+        tracing::info!("Podman auto-start disabled");
+        Ok(())
+    }
 }
 
 impl Default for PodmanInstaller {

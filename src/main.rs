@@ -70,6 +70,12 @@ enum Commands {
     },
     /// Reset the environment (clears all uncver containers and restarts infrastructure)
     Reset,
+    /// Enable auto-start of Podman machine on system boot
+    Autostart {
+        /// Disable auto-start instead of enabling
+        #[arg(long)]
+        disable: bool,
+    },
     /// Start the tray application
     Tray,
     /// Load and start an artifact from a local directory
@@ -115,6 +121,7 @@ async fn main() -> anyhow::Result<()> {
             info!("Installing dependencies...");
             podman.ensure_installed()?;
             podman.ensure_machine_running()?;
+            podman.enable_autostart()?;
             info!("Installation complete!");
         }
         Commands::List => {
@@ -301,6 +308,15 @@ async fn main() -> anyhow::Result<()> {
                 .output()?;
             
             info!("Reset complete! Traefik and Redis are running on 'uncver-network'.");
+        }
+        Commands::Autostart { disable } => {
+            if disable {
+                podman.disable_autostart()?;
+                println!("Podman auto-start disabled.");
+            } else {
+                podman.enable_autostart()?;
+                println!("Podman auto-start enabled. Podman machine will start on system boot.");
+            }
         }
         Commands::Ps => {
             let containers = podman.list_containers()?;

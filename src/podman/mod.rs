@@ -72,6 +72,14 @@ impl Podman {
         Ok(())
     }
 
+    pub fn enable_autostart(&self) -> Result<()> {
+        self.inner.installer.enable_autostart()
+    }
+
+    pub fn disable_autostart(&self) -> Result<()> {
+        self.inner.installer.disable_autostart()
+    }
+
     pub fn run(&self, image: &str) -> Result<String> {
         self.inner.runner.run(image)
     }
@@ -98,7 +106,8 @@ impl Podman {
         let output = std::process::Command::new("podman")
             .args(["logs", name])
             .output()?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string() + &String::from_utf8_lossy(&output.stderr))
+        Ok(String::from_utf8_lossy(&output.stdout).to_string()
+            + &String::from_utf8_lossy(&output.stderr))
     }
 
     pub fn is_available(&self) -> bool {
@@ -112,7 +121,12 @@ impl Podman {
     pub fn get_socket_path() -> String {
         // 1. Try to find the socket from podman machine (macOS/Windows)
         let output = std::process::Command::new("podman")
-            .args(["machine", "inspect", "--format", "{{(index .ConnectionInfo.PodmanSocket.Path)}}"])
+            .args([
+                "machine",
+                "inspect",
+                "--format",
+                "{{(index .ConnectionInfo.PodmanSocket.Path)}}",
+            ])
             .output();
 
         if let Ok(out) = output {

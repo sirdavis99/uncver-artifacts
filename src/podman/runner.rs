@@ -69,7 +69,7 @@ impl PodmanRunner {
         args.push("--network");
         args.push("uncver-network");
 
-        // We now rely on Traefik for all external traffic. We do NOT publish 
+        // We now rely on Traefik for all external traffic. We do NOT publish
         // ports to the host directly to avoid conflicts between different artifacts
         // that might use the same internal port (like 8080).
         // Traefik will route via the internal 'uncver-network' using container names.
