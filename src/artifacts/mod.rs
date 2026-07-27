@@ -27,6 +27,9 @@ pub struct ArtifactConfig {
     pub gui_window: Option<GuiWindow>,
     pub ports: Option<Vec<String>>,
     pub environment: Option<std::collections::HashMap<String, String>>,
+    pub run_type: Option<String>,        // "container" (default) or "host"
+    pub run_command: Option<String>,     // e.g. "python3 src/router.py"
+    pub working_dir: Option<String>,     // cwd for host process
 }
 
 #[derive(Clone)]

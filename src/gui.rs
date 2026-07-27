@@ -73,25 +73,7 @@ pub fn run_webview_viewer(url: &str, width: Option<u16>, height: Option<u16>, x:
         }
     }
 
-    #[cfg(any(
-        target_os = "windows",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "android"
-    ))]
-    let builder = WebViewBuilder::new().with_background_color((0, 0, 0, 0));
-    
-    #[cfg(not(any(
-        target_os = "windows",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "android"
-    )))]
-    let builder = {
-        use tao::platform::unix::WindowExtUnix;
-        use wry::WebViewBuilderExtUnix;
-        WebViewBuilder::new_gtk(window.gtk_window())
-    };
+    let builder = WebViewBuilder::new();
 
     let _webview = builder
         .with_url(url)

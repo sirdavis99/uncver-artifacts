@@ -134,26 +134,38 @@ impl PodmanInstaller {
         let os_release =
             std::fs::read_to_string("/etc/os-release").context("Failed to read os-release")?;
 
-        if os_release.contains("ID=ubuntu") || os_release.contains("ID=debian") {
+        if os_release.contains("ID=ubuntu")
+            || os_release.contains("ID=debian")
+            || os_release.contains("ID_LIKE=\"ubuntu")
+            || os_release.contains("ID_LIKE=\"debian")
+        {
             tracing::info!("Installing Podman via apt...");
-            Command::new("sudo")
+            let update = Command::new("sudo")
                 .args(["apt-get", "update"])
                 .status()
-                .context("Failed to apt-get update")?;
-
-            Command::new("sudo")
+                .context("Failed to run apt-get update")?;
+            if !update.success() {
+                anyhow::bail!("apt-get update failed");
+            }
+            let install = Command::new("sudo")
                 .args(["apt-get", "install", "-y", "podman"])
                 .status()
-                .context("Failed to apt-get install podman")?;
+                .context("Failed to run apt-get install podman")?;
+            if !install.success() {
+                anyhow::bail!("apt-get install podman failed");
+            }
         } else if os_release.contains("ID=fedora")
             || os_release.contains("ID=centos")
             || os_release.contains("ID=rhel")
         {
             tracing::info!("Installing Podman via dnf...");
-            Command::new("sudo")
+            let install = Command::new("sudo")
                 .args(["dnf", "install", "-y", "podman"])
                 .status()
-                .context("Failed to dnf install podman")?;
+                .context("Failed to run dnf install podman")?;
+            if !install.success() {
+                anyhow::bail!("dnf install podman failed");
+            }
         } else {
             tracing::info!("Using podman static binary or script...");
             self.install_via_script()?;
@@ -300,7 +312,11 @@ impl PodmanInstaller {
     fn enable_autostart_linux(&self) -> anyhow::Result<()> {
         let systemd_dir = std::env::var("XDG_CONFIG_HOME")
             .map(|p| std::path::PathBuf::from(p).join("systemd/user"))
-            .or_else(|_| dirs::home_dir().map(|h| h.join(".config/systemd/user")))
+            .or_else(|_| {
+                dirs::home_dir()
+                    .map(|h| h.join(".config/systemd/user"))
+                    .ok_or_else(|| std::env::VarError::NotPresent)
+            })
             .context("Failed to determine systemd user directory")?;
 
         std::fs::create_dir_all(&systemd_dir)?;
