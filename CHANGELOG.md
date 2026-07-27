@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/sirdavis99/uncver-artifacts/compare/v0.4.0...v0.5.0) (2026-07-27)
+
+
+### Features
+
+* add load command to register and start local artifacts from directory path ([88cadcf](https://github.com/sirdavis99/uncver-artifacts/commit/88cadcf82269cfc9827e3aa5913e0d7fe52ecdbf))
+* add Podman auto-start configuration for cross-platform boot and refactor Traefik routing to use file-based dynamic configuration. ([9d4366a](https://github.com/sirdavis99/uncver-artifacts/commit/9d4366a4f2ac29224899be2b116adf3000fccfaf))
+* add webview GUI integration and Podman Traefik orchestration for artifact management ([2a2e385](https://github.com/sirdavis99/uncver-artifacts/commit/2a2e3857812b848c045a9cf5b3385ba1f2a468cb))
+* implement environment reset, container management commands, and dynamic Traefik routing for artifacts ([27a8bb1](https://github.com/sirdavis99/uncver-artifacts/commit/27a8bb167837442f9ef73f94a52d79a443cbea11))
+* welcome message, refactor install into modules, add output helpers ([18ebd49](https://github.com/sirdavis99/uncver-artifacts/commit/18ebd492b681d1eed1c547e7f6057655818a6c39))
+
 ## [0.4.0](https://github.com/sirdavis99/uncver-artifacts/compare/v0.3.0...v0.4.0) (2026-04-11)
 
 
